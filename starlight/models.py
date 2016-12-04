@@ -22,14 +22,15 @@ class SimpleGaussianModel:
 
     def log_posterior(self, x):
         mu, sig = self.strip_params(x)
-        return np.sum(- 0.5 * ((self.samples - mu)/sig)**2 -
+        return - np.sum(- 0.5 * ((self.samples - mu)/sig)**2 -
                       np.log(np.pi) - np.log(sig))
 
     def log_posterior_gradients(self, x):
         mu, sig = self.strip_params(x)
-        mu_grad = np.sum((self.samples - mu)/sig**2)
-        sig_grad = np.sum((self.samples - mu)**2/sig**3 - 1/sig)
+        mu_grad = - np.sum((self.samples - mu)/sig**2)
+        sig_grad = - np.sum((self.samples - mu)**2/sig**3 - 1/sig)
         return self.combine_params(mu_grad, sig_grad)
+
 
 class FlatModel:
 
