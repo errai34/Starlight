@@ -1,3 +1,11 @@
+
+*.html
+paper/shrinkingparallaxes.pdf
+*_cy.c
+*.aux
+*.out
+*.synctex.gz
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

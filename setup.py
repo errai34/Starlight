@@ -19,7 +19,7 @@ args = {
     }
 
 ext_modules = [
-    Extension("starlight.gibbs_cy",  ["starlight/gibbs_cy.pyx"], **args)
+    Extension("starlight.models_cy",  ["starlight/models_cy.pyx"], **args)
     ]
 
 setup(
