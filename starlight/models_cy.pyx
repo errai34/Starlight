@@ -11,8 +11,7 @@ cdef double gauss_prob(double x, double mu, double sig) nogil:
     return exp(- 0.5 * pow((x - mu)/sig, 2.)) / (sqrt(2.*M_PI) * sig)
 
 cdef double gauss_prob_grad(double x, double mu, double sig) nogil:
-    return exp(- 0.5 * pow((x - mu)/sig, 2.)) / (sqrt(2.*M_PI) * sig)\
-        * - (x - mu)/sig**2
+    return - gauss_prob(x, mu, sig) * (x - mu)/sig**2
 
 cdef double gauss_lnprob(double x, double mu, double sig) nogil:
     return 0.5 * pow((x - mu)/sig, 2) + 0.5 * log(2*M_PI) + log(sig)
@@ -25,7 +24,7 @@ cdef double gaussdistmag_lnprob(
     return 0.5 * pow((absmag + 5.*log10(dist) + 10. - obsmag)/obsmagg_err, 2.) + 0.5 * log(2*M_PI) + log(obsmagg_err)
 
 cdef double gaussdistmag_lnprob_grad_dist(double dist, double absmag, double obsmag, double obsmagg_err) nogil:
-    return 5. * (absmag + 5*log10(dist) + 10. - obsmag) / (dist * obsmagg_err * obsmagg_err)
+    return 5. * (absmag + 5*log10(dist) + 10. - obsmag) / (dist * obsmagg_err * obsmagg_err * log(10.))
 
 cdef double gaussdistmag_lnprob_grad_absmag(double dist, double absmag, double obsmag, double obsmagg_err) nogil:
     return (absmag + 5*log10(dist) + 10. - obsmag) / (obsmagg_err * obsmagg_err)
@@ -69,8 +68,8 @@ def lnprob(
         for b in range(nbins):
             probker = gauss_prob(absmags[o], binmus[b, 0], binsigs[b, 0])
             for j in range(ncols):
-                probker *= gauss_prob(colors[o, j], binmus[b, j+1], binsigs[b, j+1])
-            probbins += binamps[b] * probker / nbins
+                probker = probker * gauss_prob(colors[o, j], binmus[b, j+1], binsigs[b, j+1])
+            probbins = probbins + binamps[b] * probker / nbins
         valtot += - log(probbins)
     return valtot
 
@@ -114,24 +113,25 @@ def lnprob_gradients(
         for b in range(nbins):
             probker = gauss_prob(absmags[o], binmus[b, 0], binsigs[b, 0])
             for j in range(ncols):
-                probker *= gauss_prob(colors[o, j], binmus[b, j+1], binsigs[b, j+1])
-            probbins += binamps[b] * probker / nbins
+                probker = probker * gauss_prob(colors[o, j], binmus[b, j+1], binsigs[b, j+1])
+            probbins = probbins + binamps[b] * probker / nbins
         for b in range(nbins):
             probker = gauss_prob_grad(absmags[o], binmus[b, 0], binsigs[b, 0])
             for j in range(ncols):
-                probker *= gauss_prob(colors[o, j], binmus[b, j+1], binsigs[b, j+1])
+                probker = probker * gauss_prob(colors[o, j], binmus[b, j+1], binsigs[b, j+1])
             absmags_grad[o] += - binamps[b] * probker / nbins / probbins
         for j in range(ncols):
             for b in range(nbins):
                 probker = gauss_prob(absmags[o], binmus[b, 0], binsigs[b, 0])
                 for i in range(ncols):
                     if i == j:
-                        probker *= gauss_prob_grad(colors[o, i], binmus[b, i+1], binsigs[b, i+1])
+                        probker = probker * gauss_prob_grad(colors[o, i], binmus[b, i+1], binsigs[b, i+1])
                     else:
-                        probker *= gauss_prob(colors[o, i], binmus[b, i+1], binsigs[b, i+1])
+                        probker = probker * gauss_prob(colors[o, i], binmus[b, i+1], binsigs[b, i+1])
                 colors_grad[o, j] += - binamps[b] * probker / nbins / probbins
         for b in range(nbins):
             probker = gauss_prob(absmags[o], binmus[b, 0], binsigs[b, 0])
             for j in range(ncols):
-                probker *= gauss_prob(colors[o, j], binmus[b, j+1], binsigs[b, j+1])
-            binamps_grad[b] += - probker / nbins / probbins
+                probker = probker * gauss_prob(colors[o, j], binmus[b, j+1], binsigs[b, j+1])
+            with gil:
+                binamps_grad[b] += - probker / nbins / probbins
