@@ -182,7 +182,6 @@ def test_SimpleHDRModel_gradients():
                 assert abs(colors_grad3/colors_grad2[i, j]) - 1\
                     < relative_accuracy
 
-        print(np.abs(binamps_grad1/binamps_grad2) - 1)
         np.testing.assert_allclose(binamps_grad1, binamps_grad2,
                                    rtol=relative_accuracy)
         for b in range(nbins):

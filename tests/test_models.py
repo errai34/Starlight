@@ -5,7 +5,7 @@ from scipy.misc import derivative
 from starlight.models import *
 
 relative_accuracy = 0.01
-NREPEAT = 1
+NREPEAT = 4
 
 
 def test_SimpleGaussianModel_gradients():
@@ -35,16 +35,14 @@ def test_SimpleGaussianModel_gradients():
         assert abs(sig_grad2/sig_grad-1) < relative_accuracy
 
 
-    # ADD OPTIMIZATION
-
 def test_SimpleHDRModel_gradients():
 
-    nbins_perdim = 2
-    ncols = 1
-    nobj = 10
-    varpi_fracerror, mags_fracerror = 0.001, 0.001
-
     for k in range(NREPEAT):
+        nbins_perdim = np.random.randint(2, 6)
+        ncols = np.random.randint(1, 3)
+        nobj = np.random.randint(10, 50)
+        varpi_fracerror, mags_fracerror = np.random.uniform(0.001, 0.01, 2)
+
         model = SimpleHRDModel()
         nbins, binamps, binmus, binsigs = model.draw_bins(nbins_perdim, ncols)
         absmags, colors, distances,\
@@ -60,13 +58,60 @@ def test_SimpleHDRModel_gradients():
         x = model.combine_params(absmags, distances, colors, binamps)
         absmag_grad, distances_grad, colors_grad, binamps_grad =\
             model.strip_params(model.log_posterior_gradients(x))
-        print("LNPOST", model.log_posterior(x))
 
-        def f(distances2):
-            x = model.combine_params(absmags, distances2, colors, binamps)
-            return model.log_posterior(x)
+        for i in range(nbins):
 
-        distances_grad2 = derivative(f, distances, dx=0.001*distances)
-        np.testing.assert_allclose(distances_grad2, distances_grad, rtol=relative_accuracy)
+            def f(d):
+                binamps2 = 1*binamps
+                binamps2[i] = d
+                x = model.combine_params(absmags, distances,
+                                         colors, binamps2)
+                return model.log_posterior(x)
 
-    # ADD OPTIMIZATION
+            binamps_grad2 = derivative(f, binamps[i],
+                                       dx=0.001*binamps[i], order=7)
+            np.testing.assert_allclose(binamps_grad2,
+                                       binamps_grad[i],
+                                       rtol=relative_accuracy)
+
+        for i in range(nobj):
+
+            def f(d):
+                absmags2 = 1*absmags
+                absmags2[i] = d
+                x = model.combine_params(absmags2, distances,
+                                         colors, binamps)
+                return model.log_posterior(x)
+
+            absmag_grad2 = derivative(f, absmags[i],
+                                      dx=0.001*absmags[i], order=5)
+            np.testing.assert_allclose(absmag_grad2,
+                                       absmag_grad[i],
+                                       rtol=relative_accuracy)
+
+            def f(d):
+                distances2 = 1*distances
+                distances2[i] = d
+                x = model.combine_params(absmags, distances2,
+                                         colors, binamps)
+                return model.log_posterior(x)
+
+            distances_grad2 = derivative(f, distances[i],
+                                         dx=0.001*distances[i], order=5)
+            np.testing.assert_allclose(distances_grad2,
+                                       distances_grad[i],
+                                       rtol=relative_accuracy)
+
+            for j in range(ncols):
+                def f(d):
+                    colors2 = 1*colors
+                    colors2[i, j] = d
+                    x = model.combine_params(absmags, distances,
+                                             colors2, binamps)
+                    return model.log_posterior(x)
+
+                colors_grad2 = derivative(f, colors[i, j],
+                                          dx=0.001*colors[i, j], order=5)
+                np.testing.assert_allclose(colors_grad2,
+                                           colors_grad[i, j],
+                                           rtol=relative_accuracy)
