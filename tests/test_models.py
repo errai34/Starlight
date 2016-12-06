@@ -4,8 +4,8 @@ from scipy.misc import derivative
 import pytest
 from starlight.models import *
 
-relative_accuracy = 0.01
-NREPEAT = 4
+relative_accuracy = 0.02
+NREPEAT = 2
 
 
 def test_SimpleGaussianModel_gradients():
@@ -39,10 +39,10 @@ def test_SimpleGaussianModel_gradients():
 def test_SimpleHDRModel_nomarg_gradients():
 
     for k in range(NREPEAT):
-        nbins_perdim = np.random.randint(2, 6)
+        nbins_perdim = np.random.randint(10, 60)
         ncols = np.random.randint(1, 3)
-        nobj = np.random.randint(10, 50)
-        varpi_fracerror, mags_fracerror = np.random.uniform(0.001, 0.01, 2)
+        nobj = np.random.randint(10, 100)
+        varpi_fracerror, mags_fracerror = np.random.uniform(0.01, 0.02, 2)
 
         model = SimpleHRDModel_nomarg()
         nbins, binamps, binmus, binsigs = model.draw_bins(nbins_perdim, ncols)
@@ -121,9 +121,9 @@ def test_SimpleHDRModel_nomarg_gradients():
 def test_SimpleHDRModel_gradients():
 
     for k in range(NREPEAT):
-        nbins_perdim = np.random.randint(2, 6)
-        ncols = np.random.randint(1, 3)
-        nobj = np.random.randint(10, 50)
+        nbins_perdim = np.random.randint(2, 4)
+        ncols = np.random.randint(2, 5)
+        nobj = np.random.randint(20, 150)
         varpi_fracerror, mags_fracerror = np.random.uniform(0.001, 0.01, 2)
 
         model = SimpleHRDModel()

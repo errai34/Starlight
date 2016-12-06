@@ -30,7 +30,7 @@ def test_HMC_SimpleGaussianModel():
         print(x_inf_mean)
         print(x_inf_std)
         print(chi2)
-        assert np.all(chi2 < 5)
+        assert np.all(chi2 < 15)
 
 
 def test_HMC_SimpleHRDModel():

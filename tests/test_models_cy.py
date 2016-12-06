@@ -229,7 +229,7 @@ def mylnprob_and_grads_marg(
     lnprobval += - np.log(np.sum(binprobs, axis=1)).sum()
 
     binamps_grad = - np.sum(binprobs / binamps[None, :] /
-                          np.sum(binprobs, axis=1)[:, None], axis=0)
+                            np.sum(binprobs, axis=1)[:, None], axis=0)
 
     distances_grad = - (1/distances - varpi) / (varpi_err * distances)**2
     gradterm = (5*np.log10(distances)[:, None] + 10 -

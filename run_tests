@@ -1,0 +1,4 @@
+coverage run --source starlight -m py.test --ignore=old_stuff
+pep8 starlight/*py
+pep8 tests/*py
+coverage report
