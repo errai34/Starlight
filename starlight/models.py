@@ -24,7 +24,7 @@ class SimpleGaussianModel:
     def log_posterior(self, x):
         mu, sig = self.strip_params(x)
         return - np.sum(- 0.5 * ((self.samples - mu)/sig)**2 -
-                      np.log(np.pi) - np.log(sig))
+                        np.log(np.pi) - np.log(sig))
 
     def log_posterior_gradients(self, x):
         mu, sig = self.strip_params(x)
@@ -33,14 +33,14 @@ class SimpleGaussianModel:
         return self.combine_params(mu_grad, sig_grad)
 
 
-class SimpleHRDModel:
+class SimpleHRDModel_nomarg:
 
     def __init__(self):
         pass
 
     def draw_bins(self, nbins_perdim, ncols):
         grids = np.meshgrid(*[np.linspace(0, 1, nbins_perdim)
-                             for i in range(ncols + 1)])
+                              for i in range(ncols + 1)])
         binmus = np.vstack([g.ravel() for g in grids]).T
         binsigs = 0*binmus + 1./nbins_perdim
         nbins = nbins_perdim**(ncols + 1)
@@ -91,8 +91,7 @@ class SimpleHRDModel:
         obsmags_err = obsmags * mags_fracerror
         obsmags += obsmags_err * np.random.randn(nobj)
         obscolors = np.zeros((nobj, self.ncols))
-        for i in range(self.ncols):
-            obscolors[:, i] = colors[:, i] + obsmags
+        obscolors[:, i] = 1*colors[:, i]
         obscolors_err = obscolors * mags_fracerror
         obscolors = obscolors + obscolors_err *\
             np.random.randn(obscolors.size).reshape((nobj, self.ncols))
@@ -117,18 +116,18 @@ class SimpleHRDModel:
 
     def log_posterior(self, x):
         absmag, distances, colors, binamps = self.strip_params(x)
-        return lnprob(self.nobj, self.nbins, self.ncols,
-                      self.varpi, self.varpi_err,
-                      self.obsmags, self.obsmags_err,
-                      self.obscolors, self.obscolors_err,
-                      absmag, distances, colors, binamps,
-                      self.binmus, self.binsigs)
+        return lnprob_nomarg(self.nobj, self.nbins, self.ncols,
+                             self.varpi, self.varpi_err,
+                             self.obsmags, self.obsmags_err,
+                             self.obscolors, self.obscolors_err,
+                             absmag, distances, colors, binamps,
+                             self.binmus, self.binsigs)
 
     def log_posterior_gradients(self, x):
         absmag, distances, colors, binamps = self.strip_params(x)
         absmag_grad, distances_grad, colors_grad, binamps_grad =\
             0*absmag, 0*distances, 0*colors, 0*binamps
-        lnprob_gradients(
+        lnprob_gradients_nomarg(
             absmag_grad, distances_grad, colors_grad, binamps_grad,
             self.nobj, self.nbins, self.ncols,
             self.varpi, self.varpi_err,
@@ -138,3 +137,36 @@ class SimpleHRDModel:
             self.binmus, self.binsigs)
         return self.combine_params(absmag_grad, distances_grad,
                                    colors_grad, binamps_grad)
+
+
+class SimpleHRDModel(SimpleHRDModel_nomarg):
+
+    def strip_params(self, x):
+        assert x.size == self.nobj + self.nbins
+        distances, binamps = np.split(x, self.splits)
+        return distances, binamps
+
+    def combine_params(self, distances, binamps):
+        return np.concatenate([distances, binamps])
+
+    def log_posterior(self, x):
+        distances, binamps = self.strip_params(x)
+        return lnprob_marg(self.nobj, self.nbins, self.ncols,
+                           self.varpi, self.varpi_err,
+                           self.obsmags, self.obsmags_err,
+                           self.obscolors, self.obscolors_err,
+                           distances, binamps,
+                           self.binmus, self.binsigs)
+
+    def log_posterior_gradients(self, x):
+        distances, binamps = self.strip_params(x)
+        distances_grad, binamps_grad = 0*distances, 0*binamps
+        lnprob_gradients_marg(
+            distances_grad, binamps_grad,
+            self.nobj, self.nbins, self.ncols,
+            self.varpi, self.varpi_err,
+            self.obsmags, self.obsmags_err,
+            self.obscolors, self.obscolors_err,
+            distances, binamps,
+            self.binmus, self.binsigs)
+        return self.combine_params(distances_grad, binamps_grad)

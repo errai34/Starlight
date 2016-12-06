@@ -43,7 +43,7 @@ def test_SimpleHDRModel_gradients():
         nobj = np.random.randint(10, 50)
         varpi_fracerror, mags_fracerror = np.random.uniform(0.001, 0.01, 2)
 
-        model = SimpleHRDModel()
+        model = SimpleHRDModel_nomarg()
         nbins, binamps, binmus, binsigs = model.draw_bins(nbins_perdim, ncols)
         absmags, colors, distances,\
             varpi, varpi_err,\

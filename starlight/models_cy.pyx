@@ -36,7 +36,7 @@ cdef double gaussdistvarpi_lnprob_grad_dist(double dist, double varpi, double va
     return - (1./dist - varpi) / (varpi_err*varpi_err*dist*dist)
 
 
-def lnprob(
+def lnprob_nomarg(
     long nobj,
     long nbins,
     long ncols,
@@ -74,7 +74,7 @@ def lnprob(
     return valtot
 
 
-def lnprob_gradients(
+def lnprob_gradients_nomarg(
     double[:] absmags_grad,  # nobj
     double[:] distances_grad,  # nobj
     double[:, :] colors_grad,  # nobj, ncols
@@ -135,3 +135,82 @@ def lnprob_gradients(
                 probker = probker * gauss_prob(colors[o, j], binmus[b, j+1], binsigs[b, j+1])
             with gil:
                 binamps_grad[b] += - probker / nbins / probbins
+
+
+def lnprob_marg(
+    long nobj,
+    long nbins,
+    long ncols,
+    double[:] varpi,  # nobj
+    double[:] varpi_err,  # nobj
+    double[:] obsmags,  # nobj
+    double[:] obsmags_err,  # nobj
+    double[:, :] obscolors,  # nobj, ncols
+    double[:, :] obscolors_err,  # nobj, ncols
+    double[:] distances,  # nobj
+    double[:] binamps,  # nbins
+    double[:, :] binmus,  # nbins, ncols + 1
+    double[:, :] binsigs  # nbins, ncols + 1
+    ):
+    cdef double valtot = 0, probbins, probker, sig
+    cdef long b, j, o
+    for o in prange(nobj, nogil=True):
+        valtot += gaussdistvarpi_lnprob(distances[o], varpi[o], varpi_err[o])
+        probbins = 0
+        for b in range(nbins):
+            sig = sqrt(pow(obsmags_err[o], 2) + pow(binsigs[b, 0], 2))
+            probker = gauss_prob(5*log10(distances[o]) + 10, obsmags[o] + binmus[b, 0], sig)
+            for j in range(ncols):
+                sig = sqrt(pow(obscolors_err[o, j], 2) + pow(binsigs[b, j+1], 2))
+                probker = probker * gauss_prob(obscolors[o, j], binmus[b, j+1], sig)
+            probbins = probbins + binamps[b] * probker / nbins
+        valtot += - log(probbins)
+    return valtot
+
+
+def lnprob_gradients_marg(
+    double[:] distances_grad,  # nobj
+    double[:] binamps_grad,  # nbins
+    long nobj,
+    long nbins,
+    long ncols,
+    double[:] varpi,  # nobj
+    double[:] varpi_err,  # nobj
+    double[:] obsmags,  # nobj
+    double[:] obsmags_err,  # nobj
+    double[:, :] obscolors,  # nobj, ncols
+    double[:, :] obscolors_err,  # nobj, ncols
+    double[:] distances,  # nobj
+    double[:] binamps,  # nbins
+    double[:, :] binmus,  # nbins, ncols + 1
+    double[:, :] binsigs  # nbins, ncols + 1
+    ):
+    cdef double valtot = 0, probbins, probbins_grad, probker, sig
+    cdef long b, j, o
+    for b in range(nbins):
+        binamps_grad[b] = 0
+    for o in prange(nobj, nogil=True):
+        distances_grad[o] = gaussdistvarpi_lnprob_grad_dist(distances[o], varpi[o], varpi_err[o])
+        probbins = 0
+        probbins_grad = 0
+        for b in range(nbins):
+            sig = sqrt(pow(obsmags_err[o], 2) + pow(binsigs[b, 0], 2))
+            probker = gauss_prob(5*log10(distances[o]) + 10, obsmags[o] + binmus[b, 0], sig)
+            for j in range(ncols):
+                sig = sqrt(pow(obscolors_err[o, j], 2) + pow(binsigs[b, j+1], 2))
+                probker = probker * gauss_prob(obscolors[o, j], binmus[b, j+1], sig)
+            sig = sqrt(pow(obsmags_err[o], 2) + pow(binsigs[b, 0], 2))
+            probbins_grad = probbins_grad + binamps[b] * probker / nbins\
+                * (5*log10(distances[o]) + 10 - obsmags[o] - binmus[b, 0])\
+                * 5 / (sig*sig*distances[o]*log(10.))
+            probbins = probbins + binamps[b] * probker / nbins
+        distances_grad[o] += probbins_grad / probbins
+        for b in range(nbins):
+            sig = sqrt(pow(obsmags_err[o], 2) + pow(binsigs[b, 0], 2))
+            probker = gauss_prob(5*log10(distances[o]) + 10, obsmags[o] + binmus[b, 0], sig)
+            for j in range(ncols):
+                sig = sqrt(pow(obscolors_err[o, j], 2) + pow(binsigs[b, j+1], 2))
+                probker = probker * gauss_prob(obscolors[o, j], binmus[b, j+1], sig)
+            with gil:
+                binamps_grad[b] += - probker / nbins / probbins
+    return valtot
