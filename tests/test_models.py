@@ -1,7 +1,7 @@
 
 import numpy as np
 from scipy.misc import derivative
-
+import pytest
 from starlight.models import *
 
 relative_accuracy = 0.01
@@ -35,7 +35,8 @@ def test_SimpleGaussianModel_gradients():
         assert abs(sig_grad2/sig_grad-1) < relative_accuracy
 
 
-def test_SimpleHDRModel_gradients():
+@pytest.mark.skip(reason="Annoying tests")
+def test_SimpleHDRModel_nomarg_gradients():
 
     for k in range(NREPEAT):
         nbins_perdim = np.random.randint(2, 6)
@@ -115,3 +116,56 @@ def test_SimpleHDRModel_gradients():
                 np.testing.assert_allclose(colors_grad2,
                                            colors_grad[i, j],
                                            rtol=relative_accuracy)
+
+
+def test_SimpleHDRModel_gradients():
+
+    for k in range(NREPEAT):
+        nbins_perdim = np.random.randint(2, 6)
+        ncols = np.random.randint(1, 3)
+        nobj = np.random.randint(10, 50)
+        varpi_fracerror, mags_fracerror = np.random.uniform(0.001, 0.01, 2)
+
+        model = SimpleHRDModel()
+        nbins, binamps, binmus, binsigs = model.draw_bins(nbins_perdim, ncols)
+        absmags, colors, distances,\
+            varpi, varpi_err,\
+            obsmags, obsmags_err,\
+            obscolors, obscolors_err\
+            = model.draw(binamps, binmus, binsigs,
+                         varpi_fracerror, mags_fracerror, nobj)
+
+        model.set_data(binmus, binsigs, varpi, varpi_err,
+                       obsmags, obsmags_err, obscolors, obscolors_err)
+
+        x = model.combine_params(distances, binamps)
+        distances_grad, binamps_grad =\
+            model.strip_params(model.log_posterior_gradients(x))
+
+        for i in range(nbins):
+
+            def f(d):
+                binamps2 = 1*binamps
+                binamps2[i] = d
+                x = model.combine_params(distances, binamps2)
+                return model.log_posterior(x)
+
+            binamps_grad2 = derivative(f, binamps[i],
+                                       dx=0.001*binamps[i], order=7)
+            np.testing.assert_allclose(binamps_grad2,
+                                       binamps_grad[i],
+                                       rtol=relative_accuracy)
+
+        for i in range(nobj):
+
+            def f(d):
+                distances2 = 1*distances
+                distances2[i] = d
+                x = model.combine_params(distances2, binamps)
+                return model.log_posterior(x)
+
+            distances_grad2 = derivative(f, distances[i],
+                                         dx=0.001*distances[i], order=5)
+            np.testing.assert_allclose(distances_grad2,
+                                       distances_grad[i],
+                                       rtol=relative_accuracy)

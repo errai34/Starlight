@@ -141,6 +141,15 @@ class SimpleHRDModel_nomarg:
 
 class SimpleHRDModel(SimpleHRDModel_nomarg):
 
+    def set_data(self, binmus, binsigs, varpi, varpi_err,
+                 obsmags, obsmags_err, obscolors, obscolors_err):
+
+        super(SimpleHRDModel, self).set_data(binmus, binsigs,
+                                             varpi, varpi_err,
+                                             obsmags, obsmags_err,
+                                             obscolors, obscolors_err)
+        self.splits = [self.nobj]
+
     def strip_params(self, x):
         assert x.size == self.nobj + self.nbins
         distances, binamps = np.split(x, self.splits)
