@@ -181,16 +181,16 @@ def prob_grid_marg(
     double[:, :] binmus,  # nbins, ncols + 1
     double[:, :] binsigs  # nbins, ncols + 1
     ):
-    cdef double valtot = 0, probbins, probker, sig
+    cdef double valtot = 0, sig
     cdef long b, j, o
     for o in prange(nobj, nogil=True):
         for b in range(nbins):
             probgrid[o, b] = gauss_prob(1/distances[o], varpi[o], varpi_err[o])
             sig = sqrt(pow(obsmags_err[o], 2) + pow(binsigs[b, 0], 2))
-            probgrid[o, b] *= gauss_prob(5*log10(distances[o]) + 10, obsmags[o] + binmus[b, 0], sig)
+            probgrid[o, b] *= binamps[b] / nbins * gauss_prob(5*log10(distances[o]) + 10, obsmags[o] + binmus[b, 0], sig)
             for j in range(ncols):
                 sig = sqrt(pow(obscolors_err[o, j], 2) + pow(binsigs[b, j+1], 2))
-                probgrid[o, b] *= probker * gauss_prob(obscolors[o, j], binmus[b, j+1], sig)
+                probgrid[o, b] *= gauss_prob(obscolors[o, j], binmus[b, j+1], sig)
 
 
 def lnprob_distgradient_marg(

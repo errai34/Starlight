@@ -200,6 +200,32 @@ def test_SimpleHDRModel_nomarg_gradients():
                 < relative_accuracy
 
 
+def myprob_grid_marg(
+    nobj, nbins, ncols,
+    varpi, varpi_err,  # nobj
+    obsmags, obsmags_err,  # nobj
+    obscolors, obscolors_err,  # nobj, ncols
+    distances,  # nobj
+    binamps,  # nbins
+    binmus,  # nbins, ncols + 1
+    binsigs  # nbins, ncols + 1
+        ):
+
+    probgrid = np.zeros((nobj, nbins))
+    probgrid[:, :] = gaussian(1/distances, varpi, varpi_err)[:, None]
+
+    sig = np.sqrt(binsigs[None, :, 0]**2 + obsmags_err[:, None]**2)
+    probgrid[:, :] *= binamps[None, :] / nbins\
+        * gaussian(5*np.log10(distances)[:, None] + 10,
+                   obsmags[:, None] + binmus[None, :, 0], sig)
+    for i in range(ncols):
+        sig = np.sqrt(binsigs[None, :, i+1]**2 + obscolors_err[:, i, None]**2)
+        probgrid[:, :] *= gaussian(obscolors[:, None, i],
+                                   binmus[None, :, i+1], sig)
+
+    return probgrid
+
+
 def mylnprob_and_grads_marg(
     nobj, nbins, ncols,
     varpi, varpi_err,  # nobj
@@ -304,3 +330,17 @@ def test_SimpleHDRModel_marg_gradients():
                                          dx=0.001*distances[i], order=5)
             assert abs(distances_grad3/distances_grad2[i] - 1) \
                 < relative_accuracy
+
+    probgrid1 = myprob_grid_marg(
+        nobj, nbins, ncols, varpi, varpi_err,
+        obsmags, obsmags_err, obscolors, obscolors_err,
+        distances, binamps, binmus, binsigs)
+    probgrid2 = 0*probgrid1
+    prob_grid_marg(
+        probgrid2,
+        nobj, nbins, ncols, varpi, varpi_err,
+        obsmags, obsmags_err, obscolors, obscolors_err,
+        distances, binamps, binmus, binsigs)
+
+    np.testing.assert_allclose(probgrid1, probgrid2,
+                               rtol=relative_accuracy)
