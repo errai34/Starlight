@@ -157,10 +157,9 @@ def lnprob_marg(
         b = bins[o]
         valtot += - log(binamps[b] / nbins)
         valtot += gaussdistvarpi_lnprob(distances[o], varpi[o], varpi_err[o])
-        b = bins[o]
         sig = sqrt(pow(obsmags_err[o], 2) + pow(binsigs[b, 0], 2))
-        valtot += gauss_lnprob(5*log10(distances[o]) + 10,
-                               obsmags[o] + binmus[b, 0], sig)
+        valtot += gauss_lnprob(5.*log10(distances[o]) + 10.,
+                               obsmags[o] - binmus[b, 0], sig)
         for j in range(ncols):
             sig = sqrt(pow(obscolors_err[o, j], 2) + pow(binsigs[b, j+1], 2))
             valtot += gauss_lnprob(obscolors[o, j], binmus[b, j+1], sig)
@@ -187,7 +186,7 @@ def prob_grid_marg(
         for b in range(nbins):
             probgrid[o, b] = gauss_prob(1/distances[o], varpi[o], varpi_err[o])
             sig = sqrt(pow(obsmags_err[o], 2) + pow(binsigs[b, 0], 2))
-            probgrid[o, b] *= binamps[b] / nbins * gauss_prob(5*log10(distances[o]) + 10, obsmags[o] + binmus[b, 0], sig)
+            probgrid[o, b] *= binamps[b] / nbins * gauss_prob(5*log10(distances[o]) + 10, obsmags[o] - binmus[b, 0], sig)
             for j in range(ncols):
                 sig = sqrt(pow(obscolors_err[o, j], 2) + pow(binsigs[b, j+1], 2))
                 probgrid[o, b] *= gauss_prob(obscolors[o, j], binmus[b, j+1], sig)
@@ -215,5 +214,5 @@ def lnprob_distgradient_marg(
         b = bins[o]
         sig = sqrt(pow(obsmags_err[o], 2) + pow(binsigs[b, 0], 2))
         distances_grad[o] +=\
-            (5*log10(distances[o]) + 10 - obsmags[o] - binmus[b, 0])\
+            (5*log10(distances[o]) + 10 - obsmags[o] + binmus[b, 0])\
             * 5 / (sig*sig*distances[o]*log(10.))

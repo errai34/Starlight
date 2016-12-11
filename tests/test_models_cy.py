@@ -217,7 +217,7 @@ def myprob_grid_marg(
     sig = np.sqrt(binsigs[None, :, 0]**2 + obsmags_err[:, None]**2)
     probgrid[:, :] *= binamps[None, :] / nbins\
         * gaussian(5*np.log10(distances)[:, None] + 10,
-                   obsmags[:, None] + binmus[None, :, 0], sig)
+                   obsmags[:, None] - binmus[None, :, 0], sig)
     for i in range(ncols):
         sig = np.sqrt(binsigs[None, :, i+1]**2 + obscolors_err[:, i, None]**2)
         probgrid[:, :] *= gaussian(obscolors[:, None, i],
@@ -245,7 +245,7 @@ def mylnprob_and_grads_marg(
     famps = np.zeros((nobj, ))
     for o in range(nobj):
         famps[o] = binamps[bins[o]] / nbins
-        allbinmus[o, 0] = binmus[bins[o], 0] + obsmags[o]
+        allbinmus[o, 0] = obsmags[o] - binmus[bins[o], 0]
         allbinsigs[o, 0] = np.sqrt(binsigs[bins[o], 0]**2 +
                                    obsmags_err[o]**2)
         for i in range(ncols):
