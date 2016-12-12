@@ -100,9 +100,11 @@ class SimpleHRDModel_nomarg:
         obsmags += obsmags_err * np.random.randn(nobj)
         obscolors = np.zeros((nobj, self.ncols))
         obscolors = 1*colors
-        obscolors_err = obscolors * mags_fracerror.reshape((nobj, -1))
-        obscolors = obscolors + obscolors_err *\
-            np.random.randn(obscolors.size).reshape((nobj, self.ncols))
+        obscolors_err = obscolors*0
+        for j in range(colors.shape[1]):
+            obscolors_err[:, j] = obscolors[:, j] * mags_fracerror
+            obscolors[:, j] = obscolors[:, j] + obscolors_err[:, j] *\
+                np.random.randn(nobj)
         return varpi, varpi_err, obsmags, obsmags_err, obscolors, obscolors_err
 
     def set_data(self, binmus, binsigs, varpi, varpi_err,
@@ -184,6 +186,7 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
         if self.ibins is None:
             self.ibins = np.repeat(np.arange(1, self.nbins), self.nobj)\
                 .reshape((self.nbins-1, self.nobj)).T.ravel()
+        #  TODO: not recompute if binamps and distances haven't changed
         probgrid = np.zeros((self.nobj, self.nbins))
         prob_grid_marg(
             probgrid, self.nobj, self.nbins, self.ncols,
@@ -213,11 +216,17 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
         self.binamps = fbs
         return fbs
 
-    def mcmcdraw_distances(self, step_size=1e-3, num_steps=10):
+    def mcmcdraw_distances(self, num_steps=10, dist_min=0.1, dist_max=0.4,
+                           step_size_min=1e-5, step_size_max=1e-2):
         accept = False
-        while accept is False: # improve that!
+
+        while accept is False:  # TODO: improve that!
+
+            step_size = step_size_min + (step_size_max - step_size_min) *\
+                np.random.uniform(low=0, high=1, size=self.nobj)
             distances0 = 1*self.distances
             v0 = np.random.randn(distances0.size)
+
             distgrads = np.zeros((self.nobj, ))
             lnprob_distgradient_marg(
                 distgrads, self.nobj, self.nbins, self.ncols,
@@ -227,15 +236,52 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
                 self.binmus, self.binsigs)
             v = v0 - 0.5 * step_size * distgrads
             distances = distances0 + step_size * v
+
+            ind_upper = distances > dist_max
+            distances[ind_upper] = 2*dist_max - distances[ind_upper]
+            v[ind_upper] = - v[ind_upper]
+            ind_lower = distances <= dist_min
+            distances[ind_lower] = 2*dist_min - distances[ind_lower]
+            v[ind_lower] = - v[ind_lower]
+            ind_upper = distances > dist_max
+            ind_lower = distances <= dist_min
+
+            if np.sum(~np.isfinite(distgrads)) > 0\
+                or np.sum(~np.isfinite(distances)) > 0\
+                    or ind_lower.sum() > 0 or ind_upper.sum() > 0:
+                print("num", np.sum(~np.isfinite(distgrads)),
+                      np.sum(~np.isfinite(distances)))
+                print("dist", distances[~np.isfinite(distances)])
+                print("grad", distgrads[~np.isfinite(distgrads)])
+                stop
+
             for i in range(num_steps):
+
+                distgrads0 = 1*distgrads
                 lnprob_distgradient_marg(
                     distgrads, self.nobj, self.nbins, self.ncols,
                     self.varpi, self.varpi_err, self.obsmags, self.obsmags_err,
                     self.obscolors, self.obscolors_err,
                     self.bins, distances, self.binamps,
                     self.binmus, self.binsigs)
+
                 v = v - step_size * distgrads
                 distances = distances + step_size * v
+
+                ind_upper = distances > dist_max
+                distances[ind_upper] = 2*dist_max - distances[ind_upper]
+                v[ind_upper] = - v[ind_upper]
+                ind_lower = distances <= dist_min
+                distances[ind_lower] = 2*dist_min - distances[ind_lower]
+                v[ind_lower] = - v[ind_lower]
+                ind_upper = distances > dist_max
+                ind_lower = distances <= dist_min
+                if np.sum(~np.isfinite(distgrads)) > 0\
+                    or np.sum(~np.isfinite(distances)) > 0\
+                        or ind_lower.sum() > 0 or ind_upper.sum() > 0:
+                    print("stopped leapfrog at", i, end=" - ")
+                    break
+
             lnprob_distgradient_marg(
                 distgrads, self.nobj, self.nbins, self.ncols,
                 self.varpi, self.varpi_err, self.obsmags, self.obsmags_err,
@@ -243,6 +289,7 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
                 self.bins, distances, self.binamps,
                 self.binmus, self.binsigs)
             v = v - 0.5 * step_size * distgrads
+
             lnprob = lnprob_marg(self.nobj, self.nbins, self.ncols,
                                  self.varpi, self.varpi_err,
                                  self.obsmags, self.obsmags_err,
@@ -257,9 +304,22 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
                                   self.binmus, self.binsigs)
             orig = lnprob0 + 0.5 * np.dot(v0.T, v0)
             current = lnprob + 0.5 * np.dot(v.T, v)
-            p_accept = min(1.0, np.exp(orig - current))
-            accept = p_accept > np.random.uniform()
+            if np.isfinite(orig) and np.isfinite(current):
+                p_accept = min(1.0, np.exp(orig - current))
+                accept = p_accept > np.random.uniform()
+            if accept is False:
+                print("rejected", end=" - ")
+
         self.distances = distances
+        ind_upper = distances > dist_max
+        ind_lower = distances <= dist_min
+        if np.sum(~np.isfinite(distgrads)) > 0\
+            or np.sum(~np.isfinite(distances)) > 0\
+                or ind_lower.sum() > 0 or ind_upper.sum() > 0:
+            print("num const:", ind_lower.sum(), ind_upper.sum())
+            print("num nan", np.sum(~np.isfinite(distgrads)),
+                  np.sum(~np.isfinite(distances)))
+            stop
         return distances
 
     def gibbs_sampler(self, numsamples):

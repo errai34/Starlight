@@ -4,6 +4,7 @@ from scipy.misc import derivative
 import pytest
 from starlight.models import *
 from scipy.optimize import minimize
+from starlight.models_cy import lnprob_distgradient_marg
 
 relative_accuracy = 0.02
 NREPEAT = 2
@@ -140,39 +141,27 @@ def test_SimpleHDRModel_gradients():
         model.distances = 1*distances
         model.bins = 1*bins
         model.binamps = 1*binamps
-        bins_samples = model.mcmcdraw_bins()
-        distances_samples = model.mcmcdraw_distances()
-        binamps_samples = model.mcmcdraw_binamps()
+        model.distances = 1./varpi
+        model.bins = bins
+        model.bincounts = np.bincount(model.bins, minlength=nbins)
+        model.binamps = np.random.dirichlet(model.bincounts)
 
+        distgrads = np.zeros((nobj, ))
 
-@pytest.mark.skip(reason="No working yet")
-def test_SimpleHDRModel_optimization():
+        lnprob_distgradient_marg(
+                    distgrads, model.nobj, model.nbins, model.ncols,
+                    model.varpi, model.varpi_err, model.obsmags,
+                    model.obsmags_err, model.obscolors, model.obscolors_err,
+                    model.bins, model.distances, model.binamps,
+                    model.binmus, model.binsigs)
+        step_size_hardmax = np.clip(1 / np.abs(distgrads / 0.3), 1e-8, 1e-3)
+        step_size_min = step_size_hardmax / 100
+        step_size_max = step_size_hardmax / 10
 
-    nbins_perdim = np.random.randint(2, 4)
-    ncols = np.random.randint(2, 5)
-    varpi_fracerror, mags_fracerror = np.random.uniform(0.0001, 0.001, 2)
-    nobj = np.random.randint(100, 200)
-    model = SimpleHRDModel()
-    nbins, binamps, binmus, binsigs = model.draw_bins(nbins_perdim, ncols)
-    absmags, colors, distances, bins =\
-        model.draw_properties(binamps, binmus, binsigs, nobj)
-
-    nsamples = 10
-    residuals = np.zeros((nsamples, nobj + nbins))
-    for i in range(10):
-        varpi, varpi_err, obsmags, obsmags_err, obscolors, obscolors_err =\
-            model.draw_data(absmags, colors, distances,
-                            varpi_fracerror, mags_fracerror)
-        model.set_data(binmus, binsigs, varpi, varpi_err,
-                       obsmags, obsmags_err, obscolors, obscolors_err)
-        x_true = model.combine_params(distances, binamps)
-
-        res1 = minimize(model.log_posterior, x_true)
-        #res2 = minimize(model.log_posterior, x_true, jac=model.log_posterior_gradients)
-        #np.testing.assert_allclose(res1.x, res2.x, rtol=relative_accuracy)
-
-        residuals[i, :] = res1.x - x_true
-
-    print("x_true", x_true)
-    print("residuals", residuals)
-    np.testing.assert_allclose(residuals, 0*residuals, rtol=relative_accuracy)
+        num_steps = 50
+        bins_sample = model.mcmcdraw_bins()
+        distance_sample = model.mcmcdraw_distances(
+            num_steps=num_steps,
+            step_size_min=step_size_min,
+            step_size_max=step_size_max)
+        binamps_sample = model.mcmcdraw_binamps()
