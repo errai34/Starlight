@@ -138,30 +138,5 @@ def test_SimpleHDRModel_gradients():
         model.set_data(binmus, binsigs, varpi, varpi_err,
                        obsmags, obsmags_err, obscolors, obscolors_err)
 
-        model.distances = 1*distances
-        model.bins = 1*bins
-        model.binamps = 1*binamps
-        model.distances = 1./varpi
-        model.bins = bins
-        model.bincounts = np.bincount(model.bins, minlength=nbins)
-        model.binamps = np.random.dirichlet(model.bincounts)
-
-        distgrads = np.zeros((nobj, ))
-
-        lnprob_distgradient_marg(
-                    distgrads, model.nobj, model.nbins, model.ncols,
-                    model.varpi, model.varpi_err, model.obsmags,
-                    model.obsmags_err, model.obscolors, model.obscolors_err,
-                    model.bins, model.distances, model.binamps,
-                    model.binmus, model.binsigs)
-        step_size_hardmax = np.clip(1 / np.abs(distgrads / 0.3), 1e-8, 1e-3)
-        step_size_min = step_size_hardmax / 100
-        step_size_max = step_size_hardmax / 10
-
-        num_steps = 50
-        bins_sample = model.mcmcdraw_bins()
-        distance_sample = model.mcmcdraw_distances(
-            num_steps=num_steps,
-            step_size_min=step_size_min,
-            step_size_max=step_size_max)
-        binamps_sample = model.mcmcdraw_binamps()
+        distances_samples, bins_samples, binamps_samples =\
+            model.gibbs_sampler(1)

@@ -322,13 +322,42 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
             stop
         return distances
 
-    def gibbs_sampler(self, numsamples):
-        distances_samples = np.zeros((numsamples, self.nobj))
-        bins_samples = np.zeros((numsamples, self.nobj))
-        binamps_samples = np.zeros((numsamples, self.nbins))
-        for k in range(numsamples):
-            bins_samples[k, :] = self.mcmcdraw_bins()
-            distances_samples[k, :] = self.mcmcdraw_distances()
-            binamps_samples[k, :] = self.mcmcdraw_binamps()
+    def gibbs_sampler(self, num_samples):
+
+        self.distances = 1./self.varpi
+        probgrid = np.zeros((self.nobj, self.nbins))
+        self.binamps = np.repeat(1./self.nbins, self.nbins)
+        prob_grid_marg(
+            probgrid, self.nobj, self.nbins, self.ncols,
+            self.varpi, self.varpi_err, self.obsmags, self.obsmags_err,
+            self.obscolors, self.obscolors_err,
+            self.distances, self.binamps, self.binmus, self.binsigs)
+        self.bins = np.argmax(probgrid, axis=1)
+        self.bincounts = np.bincount(self.bins, minlength=self.nbins)
+        self.binamps = np.random.dirichlet(self.bincounts)
+
+        distgrads = np.zeros((self.nobj, ))
+        lnprob_distgradient_marg(
+                    distgrads, self.nobj, self.nbins, self.ncols,
+                    self.varpi, self.varpi_err, self.obsmags, self.obsmags_err,
+                    self.obscolors, self.obscolors_err,
+                    self.bins, self.distances, self.binamps,
+                    self.binmus, self.binsigs)
+        step_size_hardmax = np.clip(1 / np.abs(distgrads / 0.3), 1e-8, 1e-3)
+        step_size_min = step_size_hardmax / 100
+        step_size_max = step_size_hardmax / 10
+
+        num_steps = 50
+
+        distances_samples = np.zeros((num_samples, self.nobj))
+        bins_samples = np.zeros((num_samples, self.nobj))
+        binamps_samples = np.zeros((num_samples, self.nbins))
+        for i in range(num_samples):
+            bins_samples[i, :] = self.mcmcdraw_bins()
+            distances_samples[i, :] = self.mcmcdraw_distances(
+                num_steps=num_steps,
+                step_size_min=step_size_min,
+                step_size_max=step_size_max)
+            binamps_samples[i, :] = self.mcmcdraw_binamps()
 
         return distances_samples, bins_samples, binamps_samples
