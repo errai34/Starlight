@@ -111,6 +111,10 @@ class SimpleHRDModel_nomarg:
                  obsmags, obsmags_err, obscolors, obscolors_err):
 
         self.nobj, self.ncols = obscolors.shape
+        self.nbins = binmus.shape[0]
+        assert binsigs.shape[0] == self.nbins
+        assert binmus.shape[1] == self.ncols + 1
+        assert binsigs.shape[1] == binmus.shape[1]
         assert varpi.size == self.nobj
         assert varpi_err.size == self.nobj
         self.varpi, self.varpi_err = varpi, varpi_err
