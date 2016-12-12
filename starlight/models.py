@@ -100,7 +100,7 @@ class SimpleHRDModel_nomarg:
         obsmags += obsmags_err * np.random.randn(nobj)
         obscolors = np.zeros((nobj, self.ncols))
         obscolors = 1*colors
-        obscolors_err = obscolors * mags_fracerror
+        obscolors_err = obscolors * mags_fracerror.reshape((nobj, -1))
         obscolors = obscolors + obscolors_err *\
             np.random.randn(obscolors.size).reshape((nobj, self.ncols))
         return varpi, varpi_err, obsmags, obsmags_err, obscolors, obscolors_err
@@ -156,6 +156,7 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
                                              obsmags, obsmags_err,
                                              obscolors, obscolors_err)
         self.splits = [self.nobj]
+        self.ibins = None
 
     def strip_params(self, x):
         assert x.size == self.nobj + self.nbins
@@ -180,7 +181,9 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
         raise NotImplemented()
 
     def mcmcdraw_bins(self):
-        ibins = np.repeat(np.arange(1, self.nbins), self.nobj).reshape((self.nbins-1, self.nobj)).T.ravel()
+        if self.ibins is None:
+            self.ibins = np.repeat(np.arange(1, self.nbins), self.nobj)\
+                .reshape((self.nbins-1, self.nobj)).T.ravel()
         probgrid = np.zeros((self.nobj, self.nbins))
         prob_grid_marg(
             probgrid, self.nobj, self.nbins, self.ncols,
@@ -195,16 +198,19 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
         res = np.zeros(self.nobj, dtype=int)
         res[pos <= cumsumweights[0, :]] = 0
         locs = np.any(cond, axis=0)
-        res[locs] = ibins[cond.T.ravel()]
-        ind_inrange = np.logical_and(res > 0, res < self.nbins)
+        res[locs] = self.ibins[cond.T.ravel()]
+        #  ind_inrange = np.logical_and(res > 0, res < self.nbins)
+        #  res[ind_inrange]
         self.bins = res
-        self.bincounts = np.bincount(res[ind_inrange], minlength=self.nbins)
+        self.bincounts = np.bincount(res, minlength=self.nbins)
         return res
 
     def mcmcdraw_binamps(self):
+        self.bincounts = np.bincount(self.bins, minlength=self.nbins)
         gammabs = np.array([np.random.gamma(alpha+1)
                             for alpha in self.bincounts])
         fbs = gammabs / gammabs.sum(axis=0)
+        self.binamps = fbs
         return fbs
 
     def mcmcdraw_distances(self, step_size=1e-3, num_steps=10):
