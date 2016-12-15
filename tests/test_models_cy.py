@@ -199,6 +199,7 @@ def test_SimpleHDRModel_nomarg_gradients():
             assert abs(binamps_grad3/binamps_grad2[b] - 1)\
                 < relative_accuracy
 
+
 def myprob_distgrid_marg(
     distances_grid,
     nobj, nbins, ncols,
@@ -213,7 +214,8 @@ def myprob_distgrid_marg(
 
     nbinsdist = distances_grid.size
     probgrid = np.zeros((nobj, nbinsdist))
-    probgrid[:, :] = gaussian(1/distances_grid[None, :], varpi[:, None], varpi_err[:, None])
+    probgrid[:, :] = gaussian(1/distances_grid[None, :],
+                              varpi[:, None], varpi_err[:, None])
 
     allbinmus = np.zeros((nobj, ncols + 1))
     allbinsigs = np.zeros((nobj, ncols + 1))
@@ -383,7 +385,6 @@ def test_SimpleHDRModel_marg_gradients():
 
     np.testing.assert_allclose(probgrid1, probgrid2,
                                rtol=relative_accuracy)
-
 
     distances_grid = np.linspace(0.2, 0.3, 4)
     probgrid1 = myprob_distgrid_marg(
