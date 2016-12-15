@@ -69,7 +69,7 @@ def lnprob_nomarg(
             probker = gauss_prob(absmags[o], binmus[b, 0], binsigs[b, 0])
             for j in range(ncols):
                 probker = probker * gauss_prob(colors[o, j], binmus[b, j+1], binsigs[b, j+1])
-            probbins = probbins + binamps[b] * probker / nbins
+            probbins = probbins + binamps[b] * probker
         valtot += - log(probbins)
     return valtot
 
@@ -114,12 +114,12 @@ def lnprob_gradients_nomarg(
             probker = gauss_prob(absmags[o], binmus[b, 0], binsigs[b, 0])
             for j in range(ncols):
                 probker = probker * gauss_prob(colors[o, j], binmus[b, j+1], binsigs[b, j+1])
-            probbins = probbins + binamps[b] * probker / nbins
+            probbins = probbins + binamps[b] * probker
         for b in range(nbins):
             probker = gauss_prob_grad(absmags[o], binmus[b, 0], binsigs[b, 0])
             for j in range(ncols):
                 probker = probker * gauss_prob(colors[o, j], binmus[b, j+1], binsigs[b, j+1])
-            absmags_grad[o] += - binamps[b] * probker / nbins / probbins
+            absmags_grad[o] += - binamps[b] * probker / probbins
         for j in range(ncols):
             for b in range(nbins):
                 probker = gauss_prob(absmags[o], binmus[b, 0], binsigs[b, 0])
@@ -128,13 +128,13 @@ def lnprob_gradients_nomarg(
                         probker = probker * gauss_prob_grad(colors[o, i], binmus[b, i+1], binsigs[b, i+1])
                     else:
                         probker = probker * gauss_prob(colors[o, i], binmus[b, i+1], binsigs[b, i+1])
-                colors_grad[o, j] += - binamps[b] * probker / nbins / probbins
+                colors_grad[o, j] += - binamps[b] * probker / probbins
         for b in range(nbins):
             probker = gauss_prob(absmags[o], binmus[b, 0], binsigs[b, 0])
             for j in range(ncols):
                 probker = probker * gauss_prob(colors[o, j], binmus[b, j+1], binsigs[b, j+1])
             with gil:
-                binamps_grad[b] += - probker / nbins / probbins
+                binamps_grad[b] += - probker / probbins
 
 
 def lnprob_marg(
@@ -155,7 +155,7 @@ def lnprob_marg(
     cdef long b, j, o
     for o in prange(nobj, nogil=True):
         b = bins[o]
-        valtot += - log(binamps[b] / nbins)
+        valtot += - log(binamps[b])
         valtot += gaussdistvarpi_lnprob(distances[o], varpi[o], varpi_err[o])
         sig = sqrt(pow(obsmags_err[o], 2) + pow(binsigs[b, 0], 2))
         valtot += gauss_lnprob(5.*log10(distances[o]) + 10.,
@@ -166,7 +166,36 @@ def lnprob_marg(
     return valtot
 
 
-def prob_grid_marg(
+def prob_distgrid_marg(
+    double[:, :] probgrid,  # nobj, nbins
+    long nbinsdist, double[:] distances_grid,  # nobj
+    long nobj, long nbins, long ncols,
+    double[:] varpi,  # nobj
+    double[:] varpi_err,  # nobj
+    double[:] obsmags,  # nobj
+    double[:] obsmags_err,  # nobj
+    double[:, :] obscolors,  # nobj, ncols
+    double[:, :] obscolors_err,  # nobj, ncols
+    long[:] bins,  # nobj
+    double[:] binamps,  # nbins
+    double[:, :] binmus,  # nbins, ncols + 1
+    double[:, :] binsigs  # nbins, ncols + 1
+    ):
+    cdef double valtot = 0, sig, probgridterm
+    cdef long b, j, o
+    for o in prange(nobj, nogil=True):
+        b = bins[o]
+        probgridterm = binamps[b]
+        for j in range(ncols):
+            sig = sqrt(pow(obscolors_err[o, j], 2) + pow(binsigs[b, j+1], 2))
+            probgridterm *= gauss_prob(obscolors[o, j], binmus[b, j+1], sig)
+        for j in range(nbinsdist):
+            probgrid[o, j] += probgridterm
+            probgrid[o, j] *= gauss_prob(1/distances_grid[j], varpi[o], varpi_err[o])
+            sig = sqrt(pow(obsmags_err[o], 2) + pow(binsigs[b, 0], 2))
+            probgrid[o, j] *= gauss_prob(5*log10(distances_grid[j]) + 10, obsmags[o] - binmus[b, 0], sig)
+
+def prob_bingrid_marg(
     double[:, :] probgrid,  # nobj, nbins
     long nobj, long nbins, long ncols,
     double[:] varpi,  # nobj
@@ -186,7 +215,7 @@ def prob_grid_marg(
         for b in range(nbins):
             probgrid[o, b] = gauss_prob(1/distances[o], varpi[o], varpi_err[o])
             sig = sqrt(pow(obsmags_err[o], 2) + pow(binsigs[b, 0], 2))
-            probgrid[o, b] *= binamps[b] / nbins * gauss_prob(5*log10(distances[o]) + 10, obsmags[o] - binmus[b, 0], sig)
+            probgrid[o, b] *= binamps[b] * gauss_prob(5*log10(distances[o]) + 10, obsmags[o] - binmus[b, 0], sig)
             for j in range(ncols):
                 sig = sqrt(pow(obscolors_err[o, j], 2) + pow(binsigs[b, j+1], 2))
                 probgrid[o, b] *= gauss_prob(obscolors[o, j], binmus[b, j+1], sig)

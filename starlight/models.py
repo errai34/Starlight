@@ -192,7 +192,7 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
                 .reshape((self.nbins-1, self.nobj)).T.ravel()
         #  TODO: not recompute if binamps and distances haven't changed
         probgrid = np.zeros((self.nobj, self.nbins))
-        prob_grid_marg(
+        prob_bingrid_marg(
             probgrid, self.nobj, self.nbins, self.ncols,
             self.varpi, self.varpi_err, self.obsmags, self.obsmags_err,
             self.obscolors, self.obscolors_err,
@@ -331,7 +331,7 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
         self.distances = 1./self.varpi
         probgrid = np.zeros((self.nobj, self.nbins))
         self.binamps = np.repeat(1./self.nbins, self.nbins)
-        prob_grid_marg(
+        prob_bingrid_marg(
             probgrid, self.nobj, self.nbins, self.ncols,
             self.varpi, self.varpi_err, self.obsmags, self.obsmags_err,
             self.obscolors, self.obscolors_err,
