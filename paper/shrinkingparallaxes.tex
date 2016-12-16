@@ -31,6 +31,24 @@
 %\usepackage{hyperref}%without colors
 
 
+
+\newcommand{\ie}{{{i.e.}~}}
+\newcommand{\eg}{{{e.g.}~}}
+\newcommand{\equref}[1]{{\xspace}Eq.~(\ref{#1})}
+\newcommand{\figref}[1]{{\xspace}Fig.~\ref{#1}}
+\newcommand{\equrefbegin}[1]{{\xspace}Equation~(\ref{#1})}
+\newcommand{\figrefbegin}[1]{{\xspace}Figure~\ref{#1}}
+\newcommand{\secref}[1]{{\xspace}Sec.~\ref{#1}}
+\renewcommand{\d}{{\mathrm{d}}}
+\newcommand{\equ}[1]{\begin{equation}#1\end{equation}}
+\newcommand{\eqn}[1]{\begin{eqnarray}#1\end{eqnarray}}
+\renewcommand{\vec}[1]{\bmath{#1}}
+\newcommand{\negsp}[1]{\hspace*{-#1mm}}
+
+\newcommand{\gal}{g}
+\newcommand{\nobj}{{N_{\rm gal}}}
+\newcommand{\band}{b}
+
 \newcommand{\todo}[1]{\textcolor{blue}{[TODO: #1]}}
 \newcommand{\bl}[1]{\textcolor{blue}{[BL: #1]}}
 \newcommand{\dwh}[1]{\textcolor{cyan}{[DWH: #1]}}
@@ -49,7 +67,8 @@
 \author{David~W.~Hogg}
   \email{david.hogg@nyu.edu}
   \affiliation{Center for Cosmology and Particle Physics, Department of Physics, New York University, New York, NY 10003, USA}
-  
+  \affiliation{Center for Data Science, New York University, 60 Fifth Avenue, New York, NY 10011, USA}
+  \affiliation{Flatiron Institute, 162 Fifth Avenue, New York, NY 10010, USA}
   
 \begin{abstract}
 TODO
@@ -63,8 +82,75 @@ TODO
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Introduction}
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Model}
+
+
+\begin{table} %%%%
+\centering
+\begin{tabular}{cl}
+\hline
+$s$	&	index of object \\
+$b$	&	index of color--magnitude bin\\
+$b_s$	&	index of color--magnitude bin\\
+$n_b$	& 	galaxy count in the $b$-th color--magnitude bin  \\
+$\{n_b\}$	&	set of all galaxy counts $n_b$, summing to $\nobj$\\
+$f_b$	&	fractional galaxy count in the $b$-th color--magnitude bin  \\
+$\{f_b\}$	&	set of all fractional bin counts $f_b$, summing to $1$\\
+$M_s, \{C_j\}_s$	&	properties of the $s$-th stars	\\
+$\{ d_s, b_s\}$	&	set of properties of all stars in the sample	\\
+$\hat{m}_s, \hat{C}_s$ 	&	\\
+$\{ \hat{m}_s, \hat{C}_s \}$ &	\\
+$\{ d_s, b_s, \hat{m}_s, \hat{C}_s, \hat{\varpi}_s \}$	 	&	\\
+\hline
+\end{tabular}
+\caption{Summary of our notation. }
+\label{tab:notation}
+\end{table} 
+
+
+
+\equ{
+	p\left(\hat{\varpi}_s \bigr\rvert d_s\right) = \mathcal{N}\bigl(\hat{\varpi}_s - d_s^{-1};\sigma_{\hat{\varpi}_s}^2 \bigr)
+}
+
+\equ{
+	p\left(\hat{m}_s, \hat{C}_s \bigr\rvert M_s, d_s, C_s\right)  =  \mathcal{N}\bigl( M_s + 5\log_{10}d_s  -\hat{m}_s ;\sigma_{\hat{m}_s}^2 \bigr) \  \mathcal{N}\bigl(\hat{C}_s - C_s;\sigma_{\hat{C}_s}^2 \bigr)
+}
+
+\eqn{
+	p\left(b_s \bigr\rvert \bigl\{ f_b \bigr\}\right) &=& f_{b_s} \\ 
+	p\left(M_s, C_s \bigr\rvert b_s \right) &=& \mathcal{N}\bigl(M_s - \mu_{b,0};\sigma_{b,0}^2 \bigr)  \ \mathcal{N}\bigl(C_s - \mu_{b,1};\sigma_{b,1}^2 \bigr)
+}
+
+
+\eqn{
+	p\left(\bigl\{ f_b \bigr\} \bigr\rvert \bigl\{ d_s, b_s, \hat{m}_s, \hat{C}_s, \hat{\varpi}_s \bigr\} \right) \propto p\bigl( \bigl\{ f_b \bigr\} \bigr\rvert \{n_b \} \bigr) \propto \prod_b \frac{ f_b^{n_b} }{n_b !}
+}
+
+
+\eqn{
+	p\left(d_s \bigr\rvert \bigl\{ f_b \bigr\}, b_s, \hat{m}_s, \hat{C}_s, \hat{\varpi}_s\right) &\propto& f_{b_s} \ \mathcal{N}\bigl(\hat{\varpi}_s - d_s^{-1};\sigma_{\hat{\varpi}_s}^2 \bigr) \  \mathcal{N}\bigl( \mu_{b,0} + 5\log_{10}d_s  -\hat{m}_s ;\sigma_{\hat{m}_s}^2 + \sigma_{b,0}^2 \bigr) 
+}
+
+
+\eqn{
+	p\left(b_s \bigr\rvert \bigl\{ f_b \bigr\}, d_s, \hat{m}_s, \hat{C}_s, \hat{\varpi}_s\right) &\propto& f_{b_s} \  \mathcal{N}\bigl( \mu_{b_s,0} + 5\log_{10}d_s  -\hat{m}_s ;\sigma_{\hat{m}_s}^2 + \sigma_{b_s,0}^2 \bigr) \  \mathcal{N}\bigl(\hat{C}_s - \mu_{b_s,1};\sigma_{\hat{C}_s}^2 + \sigma_{b_s,1}^2 \bigr)
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Application to TGAS}
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Acknowledgements}
+
+We thank Andrew Casey for useful conversations.
+
+BL was supported by NASA through the Einstein Postdoctoral Fellowship (award number PF6-170154).
+DWH was partially supported by the NSF (AST-1517237) and the Moore--Sloan Data Science Environment at NYU.
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \bibliography{bib}
