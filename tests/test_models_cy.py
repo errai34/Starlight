@@ -215,7 +215,7 @@ def myprob_distgrid_marg(
     nbinsdist = distances_grid.size
     probgrid = np.zeros((nobj, nbinsdist))
     probgrid[:, :] = gaussian(1/distances_grid[None, :],
-    varpi[:, None], varpi_err[:, None])
+                              varpi[:, None], varpi_err[:, None])
 
     allbinmus = np.zeros((nobj, ncols + 1))
     allbinsigs = np.zeros((nobj, ncols + 1))
