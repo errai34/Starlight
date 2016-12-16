@@ -215,7 +215,7 @@ def myprob_distgrid_marg(
     nbinsdist = distances_grid.size
     probgrid = np.zeros((nobj, nbinsdist))
     probgrid[:, :] = gaussian(1/distances_grid[None, :],
-                              varpi[:, None], varpi_err[:, None])
+    varpi[:, None], varpi_err[:, None])
 
     allbinmus = np.zeros((nobj, ncols + 1))
     allbinsigs = np.zeros((nobj, ncols + 1))
@@ -372,32 +372,101 @@ def test_SimpleHDRModel_marg_gradients():
             assert abs(distances_grad3/distances_grad2[i] - 1) \
                 < relative_accuracy
 
+        probgrid1 = myprob_bingrid_marg(
+            nobj, nbins, ncols, varpi, varpi_err,
+            obsmags, obsmags_err, obscolors, obscolors_err,
+            distances, binamps, binmus, binsigs)
+        probgrid2 = 0*probgrid1
+        prob_bingrid_marg(
+            probgrid2,
+            nobj, nbins, ncols, varpi, varpi_err,
+            obsmags, obsmags_err, obscolors, obscolors_err,
+            distances, binamps, binmus, binsigs)
+
+        np.testing.assert_allclose(probgrid1, probgrid2,
+                                   rtol=relative_accuracy)
+
+        distances_grid = np.linspace(0.2, 0.3, 4)
+        probgrid1 = myprob_distgrid_marg(
+            distances_grid,
+            nobj, nbins, ncols, varpi, varpi_err,
+            obsmags, obsmags_err, obscolors, obscolors_err,
+            bins, binamps, binmus, binsigs)
+        probgrid2 = 0*probgrid1
+        prob_distgrid_marg(
+            probgrid2, distances_grid.size, distances_grid,
+            nobj, nbins, ncols, varpi, varpi_err,
+            obsmags, obsmags_err, obscolors, obscolors_err,
+            bins, binamps, binmus, binsigs)
+
+        np.testing.assert_allclose(probgrid1, probgrid2,
+                                   rtol=relative_accuracy)
+
+
+def test_SimpleHDRModel_marg_grid():
+
+    nbins = 300
+    nobj = 3000
+    ncols = 1
+
+    absmags = np.random.uniform(1, 2, nobj)
+    distances = np.random.uniform(0.1, 0.3, nobj)
+    varpi = 1/distances
+    varpi_err = varpi*0.1
+    varpi += varpi_err*np.random.randn(*varpi.shape)
+    colors = np.random.uniform(1, 2, nobj*ncols).reshape((nobj, ncols))
+    binamps = np.random.uniform(0, 1, nbins)
+    binmus = np.random.uniform(1, 2, nbins*(ncols+1))\
+        .reshape((nbins, ncols+1))
+    bins = np.random.randint(low=0, high=nbins-1, size=nobj)
+    binsigs = np.repeat(0.5, nbins*(ncols+1)).reshape((nbins, ncols+1))
+    obsmags = absmags + 5*np.log10(distances) + 10
+    obsmags_err = obsmags*0.1
+    obsmags += obsmags_err * np.random.randn(*obsmags.shape)
+    obscolors = 1*colors
+    obscolors_err = obscolors*0.1
+    obscolors += obscolors_err*np.random.randn(*colors.shape)
+
+    from time import time
+    t0 = time()
+    allbinsigs = np.zeros((nobj, nbins, ncols + 1))
+    allbinsigs[:, :, 0] = np.sqrt(binsigs[None, :, 0]**2 +
+                                  obsmags_err[:, None]**2)
+    for i in range(ncols):
+        allbinsigs[:, :, i + 1] = np.sqrt(binsigs[None, :, i + 1]**2 +
+                                          obscolors_err[:, i, None]**2)
+
+    t1 = time()
     probgrid1 = myprob_bingrid_marg(
         nobj, nbins, ncols, varpi, varpi_err,
         obsmags, obsmags_err, obscolors, obscolors_err,
         distances, binamps, binmus, binsigs)
+    t2 = time()
     probgrid2 = 0*probgrid1
     prob_bingrid_marg(
         probgrid2,
         nobj, nbins, ncols, varpi, varpi_err,
         obsmags, obsmags_err, obscolors, obscolors_err,
         distances, binamps, binmus, binsigs)
+    t3 = time()
+    probgrid3 = 0*probgrid1
+    prob_bingrid_magsonly_marg(
+        probgrid3,
+        nobj, nbins, ncols, varpi, varpi_err,
+        obsmags, obscolors,
+        distances, binamps, binmus, allbinsigs)
+    t4 = time()
+    prob_bingrid_distandbins_marg(
+        probgrid3,
+        nobj, nbins, ncols, varpi, varpi_err,
+        obsmags, obscolors,
+        distances, binamps, binmus, allbinsigs)
+    t5 = time()
+    print(t1-t0, t2-t1, t3-t2, t4-t3, t5-t4)
 
     np.testing.assert_allclose(probgrid1, probgrid2,
                                rtol=relative_accuracy)
-
-    distances_grid = np.linspace(0.2, 0.3, 4)
-    probgrid1 = myprob_distgrid_marg(
-        distances_grid,
-        nobj, nbins, ncols, varpi, varpi_err,
-        obsmags, obsmags_err, obscolors, obscolors_err,
-        bins, binamps, binmus, binsigs)
-    probgrid2 = 0*probgrid1
-    prob_distgrid_marg(
-        probgrid2, distances_grid.size, distances_grid,
-        nobj, nbins, ncols, varpi, varpi_err,
-        obsmags, obsmags_err, obscolors, obscolors_err,
-        bins, binamps, binmus, binsigs)
-
-    np.testing.assert_allclose(probgrid1, probgrid2,
+    np.testing.assert_allclose(probgrid1, probgrid3,
                                rtol=relative_accuracy)
+
+#  test_SimpleHDRModel_marg_grid()

@@ -195,6 +195,52 @@ def prob_distgrid_marg(
             sig = sqrt(pow(obsmags_err[o], 2) + pow(binsigs[b, 0], 2))
             probgrid[o, j] *= gauss_prob(5*log10(distances_grid[j]) + 10, obsmags[o] - binmus[b, 0], sig)
 
+def prob_bingrid_distandbins_marg(
+    double[:, :] probgrid,  # nobj, nbins
+    long nobj, long nbins, long ncols,
+    double[:] varpi,  # nobj
+    double[:] varpi_err,  # nobj
+    double[:] obsmags,  # nobj
+    double[:, :] obscolors,  # nobj, ncols
+    double[:] distances,  # nobj
+    double[:] binamps,  # nbins
+    double[:, :] binmus,  # nbins, ncols + 1
+    double[:, :, :] sigmas  # nobj, nbins, ncols + 1
+    ):
+    cdef double valtot = 0, sig, val1, val2
+    cdef long b, j, o
+    for o in prange(nobj, nogil=True):
+        val1 = gauss_prob(1/distances[o], varpi[o], varpi_err[o])
+        val2 = 5*log10(distances[o]) + 10 - obsmags[o]
+        for b in range(nbins):
+            probgrid[o, b] *= binamps[b] * val1 * gauss_prob(val2,
+                                                             -  binmus[b, 0],
+                                                             sigmas[o, b, 0])
+
+
+def prob_bingrid_magsonly_marg(
+    double[:, :] probgrid,  # nobj, nbins
+    long nobj, long nbins, long ncols,
+    double[:] varpi,  # nobj
+    double[:] varpi_err,  # nobj
+    double[:] obsmags,  # nobj
+    double[:, :] obscolors,  # nobj, ncols
+    double[:] distances,  # nobj
+    double[:] binamps,  # nbins
+    double[:, :] binmus,  # nbins, ncols + 1
+    double[:, :, :] sigmas  # nobj, nbins, ncols + 1
+    ):
+    cdef double valtot = 0, sig
+    cdef long b, j, o
+    for o in prange(nobj, nogil=True):
+        for b in range(nbins):
+            probgrid[o, b] = 1.0
+            for j in range(ncols):
+                probgrid[o, b] *= gauss_prob(obscolors[o, j],
+                                             binmus[b, j+1],
+                                             sigmas[o, b, j+1])
+
+
 def prob_bingrid_marg(
     double[:, :] probgrid,  # nobj, nbins
     long nobj, long nbins, long ncols,
@@ -209,11 +255,12 @@ def prob_bingrid_marg(
     double[:, :] binmus,  # nbins, ncols + 1
     double[:, :] binsigs  # nbins, ncols + 1
     ):
-    cdef double valtot = 0, sig
+    cdef double valtot = 0, sig, val
     cdef long b, j, o
     for o in prange(nobj, nogil=True):
+        val = gauss_prob(1/distances[o], varpi[o], varpi_err[o])
         for b in range(nbins):
-            probgrid[o, b] = gauss_prob(1/distances[o], varpi[o], varpi_err[o])
+            probgrid[o, b] = val
             sig = sqrt(pow(obsmags_err[o], 2) + pow(binsigs[b, 0], 2))
             probgrid[o, b] *= binamps[b] * gauss_prob(5*log10(distances[o]) + 10, obsmags[o] - binmus[b, 0], sig)
             for j in range(ncols):

@@ -163,6 +163,13 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
                                              obscolors, obscolors_err)
         self.splits = [self.nobj]
         self.ibins = None
+        self.probgrid_magsonly = None
+        self.allbinsigs = np.zeros((self.nobj, self.nbins, self.ncols + 1))
+        self.allbinsigs[:, :, 0] = np.sqrt(binsigs[None, :, 0]**2 +
+                                           obsmags_err[:, None]**2)
+        for i in range(self.ncols):
+            self.allbinsigs[:, :, i+1] = np.sqrt(binsigs[None, :, i + 1]**2 +
+                                                 obscolors_err[:, i, None]**2)
 
     def strip_params(self, x):
         assert x.size == self.nobj + self.nbins
@@ -190,13 +197,17 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
         if self.ibins is None:
             self.ibins = np.repeat(np.arange(1, self.nbins), self.nobj)\
                 .reshape((self.nbins-1, self.nobj)).T.ravel()
-        #  TODO: not recompute if binamps and distances haven't changed
-        probgrid = np.zeros((self.nobj, self.nbins))
-        prob_bingrid_marg(
+        if self.probgrid_magsonly is None:
+            self.probgrid_magsonly = np.zeros((self.nobj, self.nbins))
+            prob_bingrid_magsonly_marg(
+                self.probgrid_magsonly, self.nobj, self.nbins, self.ncols,
+                self.varpi, self.varpi_err, self.obsmags, self.obscolors,
+                self.distances, self.binamps, self.binmus, self.allbinsigs)
+        probgrid = 1*self.probgrid_magsonly
+        prob_bingrid_distandbins_marg(
             probgrid, self.nobj, self.nbins, self.ncols,
-            self.varpi, self.varpi_err, self.obsmags, self.obsmags_err,
-            self.obscolors, self.obscolors_err,
-            self.distances, self.binamps, self.binmus, self.binsigs)
+            self.varpi, self.varpi_err, self.obsmags, self.obscolors,
+            self.distances, self.binamps, self.binmus, self.allbinsigs)
         cumsumweights = np.add.accumulate(probgrid, axis=1).T
         cumsumweights /= cumsumweights[-1, :]
         pos = np.random.uniform(0.0, 1.0, size=self.nobj)
@@ -312,7 +323,10 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
                 p_accept = min(1.0, np.exp(orig - current))
                 accept = p_accept > np.random.uniform()
             if accept is False:
+                print(lnprob0, np.dot(v0.T, v0))
+                print(lnprob, np.dot(v.T, v))
                 print("rejected", end=" - ")
+                exit(1)
 
         self.distances = distances
         ind_upper = distances > dist_max
@@ -326,16 +340,20 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
             stop
         return distances
 
-    def gibbs_sampler(self, num_samples):
-
+    def gibbs_sampler(self, num_samples, num_steps=10):
         self.distances = 1./self.varpi
-        probgrid = np.zeros((self.nobj, self.nbins))
         self.binamps = np.repeat(1./self.nbins, self.nbins)
-        prob_bingrid_marg(
+        if self.probgrid_magsonly is None:
+            self.probgrid_magsonly = np.zeros((self.nobj, self.nbins))
+            prob_bingrid_magsonly_marg(
+                self.probgrid_magsonly, self.nobj, self.nbins, self.ncols,
+                self.varpi, self.varpi_err, self.obsmags, self.obscolors,
+                self.distances, self.binamps, self.binmus, self.allbinsigs)
+        probgrid = 1*self.probgrid_magsonly
+        prob_bingrid_distandbins_marg(
             probgrid, self.nobj, self.nbins, self.ncols,
-            self.varpi, self.varpi_err, self.obsmags, self.obsmags_err,
-            self.obscolors, self.obscolors_err,
-            self.distances, self.binamps, self.binmus, self.binsigs)
+            self.varpi, self.varpi_err, self.obsmags, self.obscolors,
+            self.distances, self.binamps, self.binmus, self.allbinsigs)
         self.bins = np.argmax(probgrid, axis=1)
         self.bincounts = np.bincount(self.bins, minlength=self.nbins)
         self.binamps = np.random.dirichlet(self.bincounts)
@@ -351,17 +369,25 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
         step_size_min = step_size_hardmax / 100
         step_size_max = step_size_hardmax / 10
 
-        num_steps = 50
-
+        from time import time
         distances_samples = np.zeros((num_samples, self.nobj))
         bins_samples = np.zeros((num_samples, self.nobj))
         binamps_samples = np.zeros((num_samples, self.nbins))
+        t1t, t2t, t3t = 0, 0, 0
         for i in range(num_samples):
+            t1 = time()
             bins_samples[i, :] = self.mcmcdraw_bins()
+            t2 = time()
             distances_samples[i, :] = self.mcmcdraw_distances(
                 num_steps=num_steps,
                 step_size_min=step_size_min,
                 step_size_max=step_size_max)
+            t3 = time()
             binamps_samples[i, :] = self.mcmcdraw_binamps()
+            t4 = time()
+            t1t += (t2-t1)/num_samples
+            t2t += (t3-t2)/num_samples
+            t3t += (t4-t3)/num_samples
 
+        print('Time per sample: %g' % t1t, 's , %g' % t2t, 's , %g' % t3t, 's')
         return distances_samples, bins_samples, binamps_samples

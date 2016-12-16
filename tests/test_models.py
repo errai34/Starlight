@@ -122,10 +122,10 @@ def test_SimpleHDRModel_nomarg_gradients():
 def test_SimpleHDRModel_gradients():
 
     for k in range(NREPEAT):
-        nbins_perdim = np.random.randint(2, 4)
-        ncols = np.random.randint(2, 5)
-        nobj = np.random.randint(10, 50)
-        varpi_fracerror, mags_fracerror = np.random.uniform(0.01, 0.02, 2)
+        nbins_perdim = np.random.randint(10, 20)
+        ncols = np.random.randint(1, 2)
+        nobj = np.random.randint(10, 20)
+        varpi_fracerror, mags_fracerror = np.random.uniform(0.0001, 0.02, 2)
 
         model = SimpleHRDModel()
         nbins, binamps, binmus, binsigs = model.draw_bins(nbins_perdim, ncols)
@@ -139,4 +139,4 @@ def test_SimpleHDRModel_gradients():
                        obsmags, obsmags_err, obscolors, obscolors_err)
 
         distances_samples, bins_samples, binamps_samples =\
-            model.gibbs_sampler(1)
+            model.gibbs_sampler(1, num_steps=10)
