@@ -168,7 +168,7 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
         self.allbinsigs[:, :, 0] = np.sqrt(binsigs[None, :, 0]**2 +
                                            obsmags_err[:, None]**2)
         for i in range(self.ncols):
-            self.allbinsigs[:, :, i+1] = np.sqrt(binsigs[None, :, i + 1]**2 +
+            self.allbinsigs[:, :, i+1] = np.sqrt(binsigs[None, :, i+1]**2 +
                                                  obscolors_err[:, i, None]**2)
 
     def strip_params(self, x):
@@ -231,7 +231,7 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
         self.binamps = fbs
         return fbs
 
-    def mcmcdraw_distances(self, num_steps=10, dist_min=0.1, dist_max=0.4,
+    def mcmcdraw_distances(self, num_steps=10, dist_min=0.0, dist_max=0.4,
                            step_size_min=1e-5, step_size_max=1e-2):
         accept = False
 

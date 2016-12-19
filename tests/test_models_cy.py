@@ -206,7 +206,6 @@ def myprob_distgrid_marg(
     varpi, varpi_err,  # nobj
     obsmags, obsmags_err,  # nobj
     obscolors, obscolors_err,  # nobj, ncols
-    bins,  # nobj
     binamps,  # nbins
     binmus,  # nbins, ncols + 1
     binsigs  # nbins, ncols + 1
@@ -217,26 +216,17 @@ def myprob_distgrid_marg(
     probgrid[:, :] = gaussian(1/distances_grid[None, :],
                               varpi[:, None], varpi_err[:, None])
 
-    allbinmus = np.zeros((nobj, ncols + 1))
-    allbinsigs = np.zeros((nobj, ncols + 1))
-    famps = np.zeros((nobj, ))
-    for o in range(nobj):
-        famps[o] = binamps[bins[o]]
-        allbinmus[o, 0] = obsmags[o] - binmus[bins[o], 0]
-        allbinsigs[o, 0] = np.sqrt(binsigs[bins[o], 0]**2 +
-                                   obsmags_err[o]**2)
-        for i in range(ncols):
-            allbinmus[o, i + 1] = binmus[bins[o], i + 1]
-            allbinsigs[o, i + 1] = np.sqrt(binsigs[bins[o], i + 1]**2 +
-                                           obscolors_err[o, i]**2)
-
-    probgrid[:, :] *= famps[:, None]\
-        * gaussian(5*np.log10(distances_grid)[None, :] + 10,
-                   allbinmus[:, 0, None], allbinsigs[:, 0, None])
+    probgridterm = np.ones((nobj, nbins)) * binamps[None, :]
     for i in range(ncols):
-        probgrid[:, :] *= gaussian(obscolors[:, None, i],
-                                   allbinmus[:, i+1, None],
-                                   allbinsigs[:, i+1, None])
+        sig = np.sqrt(binsigs[None, :, i+1]**2 + obscolors_err[:, i, None]**2)
+        probgridterm *= gaussian(obscolors[:, None, i],
+                                   binmus[None, :, i+1], sig)
+    # nobj, nbins, ndist
+    sig = np.sqrt(binsigs[None, :, 0, None]**2 + obsmags_err[:, None, None]**2)
+    probgrid[:, :] *= np.sum(probgridterm[:, :, None] *\
+        gaussian(5*np.log10(distances_grid)[None, None, :] + 10,
+                   obsmags[:, None, None] - binmus[None, :, 0, None], sig),
+        axis=1)
 
     return probgrid
 
@@ -391,13 +381,13 @@ def test_SimpleHDRModel_marg_gradients():
             distances_grid,
             nobj, nbins, ncols, varpi, varpi_err,
             obsmags, obsmags_err, obscolors, obscolors_err,
-            bins, binamps, binmus, binsigs)
+            binamps, binmus, binsigs)
         probgrid2 = 0*probgrid1
         prob_distgrid_marg(
             probgrid2, distances_grid.size, distances_grid,
             nobj, nbins, ncols, varpi, varpi_err,
             obsmags, obsmags_err, obscolors, obscolors_err,
-            bins, binamps, binmus, binsigs)
+            binamps, binmus, binsigs)
 
         np.testing.assert_allclose(probgrid1, probgrid2,
                                    rtol=relative_accuracy)
@@ -405,8 +395,8 @@ def test_SimpleHDRModel_marg_gradients():
 
 def test_SimpleHDRModel_marg_grid():
 
-    nbins = 300
-    nobj = 3000
+    nbins = 100
+    nobj = 1000
     ncols = 1
 
     absmags = np.random.uniform(1, 2, nobj)
