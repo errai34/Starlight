@@ -63,7 +63,7 @@
   \email{boris.leistedt@nyu.edu}
   \affiliation{Center for Cosmology and Particle Physics, Department of Physics, New York University, New York, NY 10003, USA}
   \affiliation{NASA Einstein Fellow}
-  
+   
 \author{David~W.~Hogg}
   \email{david.hogg@nyu.edu}
   \affiliation{Center for Cosmology and Particle Physics, Department of Physics, New York University, New York, NY 10003, USA}
@@ -71,8 +71,14 @@
   \affiliation{Flatiron Institute, 162 Fifth Avenue, New York, NY 10010, USA}
   
 \begin{abstract}
-We present a hierarchical probabilistic model for improving distance, parallax, and color measurements of stars. 
-We build a data driven model of the color-magnitude diagram, not relying on stellar models but instead on the inferred relative abundance of stellar color, magnitudes, and distances.
+We present a hierarchical probabilistic model for obtaining improved stellar distances estimates with both multicolor and parallax information. 
+This is achieved with a data driven model of the color--magnitude diagram, not relying on stellar models but instead on the  relative abundances of stars in color--magnitude cells.
+The latter are inferred from noisy magnitudes and parallaxes; observational errors are deconvolved into a noiseless color--magnitude diagram, which can be useful for a range of applications.
+Here, we leverage multicolor information to provide narrower posterior distributions on stellar distances, a process which is particularly efficient in the dense regions of the color--magnitude diagram.
+We demonstrate the power of this approach on the Gaia TGAS data sample with APASS magnitudes.
+We validate the method on a random subsample and also on open clusters.
+We find that the number of objects with signal-to-noise ratio lower than 20 is halved, and that the distance errors are also halved for 20\% of objects.
+We make our improved distance estimates publicly available.
 \end{abstract}
 
 \pacs{TODO}
@@ -142,6 +148,22 @@ $\{ d_s, b_s, \hat{m}_s, \hat{C}_s, \hat{\varpi}_s \}$	 	&	\\
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Application to TGAS}
+
+\begin{figure}
+\caption{Parallax and color errors for training and validation sets}
+\end{figure}
+
+\begin{figure}
+\caption{3 Noisy HRD with errors or not? 3 deconvolved HRD with error maps. 3 deconvolved HRD with error maps. }
+\end{figure}
+
+\begin{figure}
+\caption{Validation parallaxes : scatter plot of distances without and with shrinkage}
+\end{figure}
+
+\begin{figure}
+\caption{Show a few PDFs, including some with basically no parallax measurements}
+\end{figure}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
