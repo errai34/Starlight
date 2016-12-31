@@ -217,8 +217,6 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
         res[pos <= cumsumweights[0, :]] = 0
         locs = np.any(cond, axis=0)
         res[locs] = self.ibins[cond.T.ravel()]
-        #  ind_inrange = np.logical_and(res > 0, res < self.nbins)
-        #  res[ind_inrange]
         self.bins = res
         self.bincounts = np.bincount(res, minlength=self.nbins)
         return res
