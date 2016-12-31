@@ -220,12 +220,13 @@ def myprob_distgrid_marg(
     for i in range(ncols):
         sig = np.sqrt(binsigs[None, :, i+1]**2 + obscolors_err[:, i, None]**2)
         probgridterm *= gaussian(obscolors[:, None, i],
-                                   binmus[None, :, i+1], sig)
+                                 binmus[None, :, i+1], sig)
     # nobj, nbins, ndist
     sig = np.sqrt(binsigs[None, :, 0, None]**2 + obsmags_err[:, None, None]**2)
-    probgrid[:, :] *= np.sum(probgridterm[:, :, None] *\
+    probgrid[:, :] *= np.sum(
+        probgridterm[:, :, None] *
         gaussian(5*np.log10(distances_grid)[None, None, :] + 10,
-                   obsmags[:, None, None] - binmus[None, :, 0, None], sig),
+                 obsmags[:, None, None] - binmus[None, :, 0, None], sig),
         axis=1)
 
     return probgrid
