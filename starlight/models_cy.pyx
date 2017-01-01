@@ -7,6 +7,18 @@ cimport cython
 from libc.math cimport sqrt, M_PI, exp, pow, erf, log, log10
 from libc.stdlib cimport abort, malloc, free
 
+cdef extern from "gsl/gsl_rng.h":
+    ctypedef struct gsl_rng_type:
+        pass
+    ctypedef struct gsl_rng:
+        pass
+    gsl_rng_type *gsl_rng_mt19937
+    gsl_rng *gsl_rng_alloc(gsl_rng_type * T)
+
+cdef extern from "gsl/gsl_randist.h":
+    double gaussian "gsl_ran_gaussian"(gsl_rng * r,double) nogil
+    double uniform "gsl_ran_flat"(const gsl_rng * r, double, double) nogil
+
 cdef double gauss_prob(double x, double mu, double sig) nogil:
     return exp(- 0.5 * pow((x - mu)/sig, 2.)) / (sqrt(2.*M_PI) * sig)
 
@@ -236,6 +248,63 @@ def prob_bingrid_magsonly_marg(
                 probgrid[o, b] *= gauss_prob(obscolors[o, j],
                                              binmus[b, j+1],
                                              sigmas[o, b, j+1])
+
+
+def sample_bins_marg(
+    long[:] bins,  # nobj
+    long[:] nearestbins,  # nobj
+    long[:] counts,  # nobj
+    long nobj, long nbins, long ncols,
+    double[:] varpi,  # nobj
+    double[:] varpi_err,  # nobj
+    double[:] obsmags,  # nobj
+    double[:, :] obscolors,  # nobj, ncols
+    double[:] distances,  # nobj
+    double[:] binamps,  # nbins
+    double[:, :] binmus,  # nbins, ncols + 1
+    double[:, :, :] sigmas  # nobj, nbins, ncols + 1
+    ):
+    cdef double sig, baseval, prob, x, disttobin, mindisttobin
+    cdef long b, j, o, count, nearestbin
+    cdef double *cumpdf
+    cdef long *ibins
+    cdef gsl_rng *r = gsl_rng_alloc(gsl_rng_mt19937)
+
+    for o in prange(nobj, nogil=True):
+        cumpdf = <double *> malloc(sizeof(double) * (nbins+1))
+        ibins = <long *> malloc(sizeof(long) * (nbins))
+        if ibins == NULL or cumpdf == NULL:
+            abort()
+        baseval = gauss_prob(1/distances[o], varpi[o], varpi_err[o])
+        count = 0
+        mindisttobin = 1e160
+        for b in range(nbins):
+            disttobin = (obsmags[o] - 5*log10(distances[o]) - 10 - binmus[b, 0])**2
+            prob = 1*baseval
+            prob = prob * binamps[b] * gauss_prob(5*log10(distances[o]) + 10, obsmags[o] - binmus[b, 0], sigmas[o, b, 0])
+            for j in range(ncols):
+                prob = prob * gauss_prob(obscolors[o, j], binmus[b, j+1], sigmas[o, b, j+1])
+                disttobin = disttobin + (obscolors[o, j] - binmus[b, j+1])**2
+            if disttobin < mindisttobin:
+                mindisttobin = disttobin
+                nearestbin = b
+            if prob > 1e-10:
+                count = count + 1
+                ibins[count-1] = b
+                cumpdf[count] = cumpdf[count-1] + prob
+        nearestbins[o] = nearestbin
+        if count == 0:
+            bins[o] = nearestbin
+        if count == 1:
+            bins[o] = ibins[count-1]
+        if count > 1:
+            x = uniform(r, 0, cumpdf[count])
+            for b in range(1, count):
+                if x < cumpdf[b] and x >= cumpdf[b-1]:
+                    bins[o] = ibins[b-1]
+        counts[o] = count
+        free(cumpdf)
+        free(ibins)
 
 
 def prob_bingrid_marg(

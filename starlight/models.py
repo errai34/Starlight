@@ -341,18 +341,13 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
     def gibbs_sampler(self, num_samples, num_steps=10):
         self.distances = 1./self.varpi
         self.binamps = np.repeat(1./self.nbins, self.nbins)
-        if self.probgrid_magsonly is None:
-            self.probgrid_magsonly = np.zeros((self.nobj, self.nbins))
-            prob_bingrid_magsonly_marg(
-                self.probgrid_magsonly, self.nobj, self.nbins, self.ncols,
-                self.varpi, self.varpi_err, self.obsmags, self.obscolors,
-                self.distances, self.binamps, self.binmus, self.allbinsigs)
-        probgrid = 1*self.probgrid_magsonly
-        prob_bingrid_distandbins_marg(
-            probgrid, self.nobj, self.nbins, self.ncols,
+        self.bins = np.zeros((self.nobj, ), dtype=int)
+        self.nearestbins = np.zeros((self.nobj, ), dtype=int)
+        self.counts = np.zeros((self.nobj, ), dtype=int)
+        sample_bins_marg(
+            self.bins, self.nearestbins, self.counts, self.nobj, self.nbins, self.ncols,
             self.varpi, self.varpi_err, self.obsmags, self.obscolors,
             self.distances, self.binamps, self.binmus, self.allbinsigs)
-        self.bins = np.argmax(probgrid, axis=1)
         self.bincounts = np.bincount(self.bins, minlength=self.nbins)
         self.binamps = np.random.dirichlet(self.bincounts)
 
@@ -374,7 +369,12 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
         t1t, t2t, t3t = 0, 0, 0
         for i in range(num_samples):
             t1 = time()
-            bins_samples[i, :] = self.mcmcdraw_bins()
+            # bins_samples[i, :] = self.mcmcdraw_bins()
+            sample_bins_marg(
+                self.bins, self.nearestbins, self.counts, self.nobj, self.nbins, self.ncols,
+                self.varpi, self.varpi_err, self.obsmags, self.obscolors,
+                self.distances, self.binamps, self.binmus, self.allbinsigs)
+            bins_samples[i, :] = self.bins
             t2 = time()
             distances_samples[i, :] = self.mcmcdraw_distances(
                 num_steps=num_steps,
