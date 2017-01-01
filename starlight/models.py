@@ -345,7 +345,8 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
         self.nearestbins = np.zeros((self.nobj, ), dtype=int)
         self.counts = np.zeros((self.nobj, ), dtype=int)
         sample_bins_marg(
-            self.bins, self.nearestbins, self.counts, self.nobj, self.nbins, self.ncols,
+            self.bins, self.nearestbins, self.counts,
+            self.nobj, self.nbins, self.ncols,
             self.varpi, self.varpi_err, self.obsmags, self.obscolors,
             self.distances, self.binamps, self.binmus, self.allbinsigs)
         self.bincounts = np.bincount(self.bins, minlength=self.nbins)
@@ -371,7 +372,8 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
             t1 = time()
             # bins_samples[i, :] = self.mcmcdraw_bins()
             sample_bins_marg(
-                self.bins, self.nearestbins, self.counts, self.nobj, self.nbins, self.ncols,
+                self.bins, self.nearestbins, self.counts,
+                self.nobj, self.nbins, self.ncols,
                 self.varpi, self.varpi_err, self.obsmags, self.obscolors,
                 self.distances, self.binamps, self.binmus, self.allbinsigs)
             bins_samples[i, :] = self.bins
