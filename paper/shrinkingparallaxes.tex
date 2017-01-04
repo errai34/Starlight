@@ -76,7 +76,6 @@ This is achieved with a data driven model of the color--magnitude diagram, not r
 The latter are inferred from noisy magnitudes and parallaxes; observational errors are deconvolved into a noiseless color--magnitude diagram, which can be useful for a range of applications.
 Here, we leverage multicolor information to provide narrower posterior distributions on stellar distances, a process which is particularly efficient in the dense regions of the color--magnitude diagram.
 We demonstrate the power of this approach on the Gaia TGAS data sample with APASS magnitudes.
-We validate the method on a random subsample and also on open clusters.
 We find that the number of objects with signal-to-noise ratio lower than 20 is halved, and that the distance errors are also halved for 20\% of objects.
 We make our improved distance estimates publicly available.
 \end{abstract}
@@ -98,16 +97,18 @@ We make our improved distance estimates publicly available.
 \centering
 \begin{tabular}{cl}
 \hline
-$s$	&	index of object \\
-$b$	&	index of color--magnitude bin\\
-$b_s$	&	index of color--magnitude bin\\
-$n_b$	& 	galaxy count in the $b$-th color--magnitude bin  \\
+$s$	&	index of object (the $s$-th star)\\
+$d_s, \varpi_s, M_s, C_s$	&	true distance, parallax, absolute magnitude, and colors	\\
+$\hat{\varpi}_s, \sigma_{\hat{\varpi}_s}^2$ 	&	parallax estimate and its variance\\
+$\hat{m}_s, \hat{C}_s, \sigma^2_{\hat{m}_s}, \sigma^2_{\hat{C}_s}$ 	&	apparent magnitude and color estimates, and their variances\\
+$b_s$	&	index of the color--magnitude bin of the $s$ object\\
+\hline
+$b$	&	generic index of color--magnitude bin\\
+$n_b$	& 	object count in the $b$-th color--magnitude bin  \\
 $\{n_b\}$	&	set of all galaxy counts $n_b$, summing to $\nobj$\\
 $f_b$	&	fractional galaxy count in the $b$-th color--magnitude bin  \\
 $\{f_b\}$	&	set of all fractional bin counts $f_b$, summing to $1$\\
-$M_s, \{C_j\}_s$	&	properties of the $s$-th stars	\\
 $\{ d_s, b_s\}$	&	set of properties of all stars in the sample	\\
-$\hat{m}_s, \hat{C}_s$ 	&	\\
 $\{ \hat{m}_s, \hat{C}_s \}$ &	\\
 $\{ d_s, b_s, \hat{m}_s, \hat{C}_s, \hat{\varpi}_s \}$	 	&	\\
 \hline
@@ -116,35 +117,85 @@ $\{ d_s, b_s, \hat{m}_s, \hat{C}_s, \hat{\varpi}_s \}$	 	&	\\
 \label{tab:notation}
 \end{table} 
 
+For each source $s$, we have an estimate of the parallax $\hat{\varpi}_s$ with a Gaussian variance $\sigma_{\hat{\varpi}_s}^2$.
+We also have a set of apparent magnitude measurements. 
+Here we will consider two magnitudes, use the first one $\hat{m}_s$ (with Gaussian variance $\sigma_{\hat{m}_s}^2$) as a reference magnitude for inferring absolute magnitudes, and the second one to obtain a color estimate $\hat{C}_s$ (with Gaussian variance $\sigma_{\hat{C}_s}^2$).
 
-
+Assuming that those estimates are independent, the likelihood function of each object factorizes as the product of two terms, 
 \equ{
-	p\left(\hat{\varpi}_s \bigr\rvert d_s\right) = \mathcal{N}\bigl(\hat{\varpi}_s - d_s^{-1};\sigma_{\hat{\varpi}_s}^2 \bigr)
+	p\left(\hat{\varpi}_s \bigr\rvert d_s\right) = \mathcal{N}\bigl(\hat{\varpi}_s - d_s^{-1};\sigma_{\hat{\varpi}_s}^2 \bigr),
 }
-
+and
 \equ{
-	p\left(\hat{m}_s, \hat{C}_s \bigr\rvert M_s, d_s, C_s\right)  =  \mathcal{N}\bigl( M_s + 5\log_{10}d_s  -\hat{m}_s ;\sigma_{\hat{m}_s}^2 \bigr) \  \mathcal{N}\bigl(\hat{C}_s - C_s;\sigma_{\hat{C}_s}^2 \bigr)
+	p\left(\hat{m}_s, \hat{C}_s \bigr\rvert M_s, d_s, C_s\right)  =  \mathcal{N}\bigl( M_s + 5\log_{10}d_s  -\hat{m}_s ;\sigma_{\hat{m}_s}^2 \bigr) \  \mathcal{N}\bigl(\hat{C}_s - C_s;\sigma_{\hat{C}_s}^2 \bigr),
 }
+which make use of the definition of apparent/absolute magnitude.
 
+We construct a model of the relative abundance of objects in color--magnitude cells. 
+Here we restrict ourself to two dimensions, absolute magnitude in one band complemented with one color.
+But the methods presented here are straightforwardly extended to multiple magnitudes and colors.
+In this setting, the $b$-th cell is a Gaussian centered at $(\mu_{b,0}, \mu_{b,1})$  with diagonal covariance $(\sigma_{b,0}^2, \sigma_{b,1}^2)$.
+The relative probabilities of the cells are denoted $\{ f_{b} \}$, summing to one ($\sum_b f_b = 1$).
+Note that we do note require to tile the entire space; in practice we will tile the color--magnitude regions of interest.
+
+Given this population model of the color--magnitude space the probability of finding a source $s$ with $(M_s, C_s)$ is
+\equ{
+	p\left(M_s, C_s  \bigr\rvert \{ f_{b} \} \right) = \sum_b f_b \ \mathcal{N}\bigl(M_s - \mu_{b,0};\sigma_{b,0}^2 \bigr)  \ \mathcal{N}\bigl(C_s - \mu_{b,1};\sigma_{b,1}^2 \bigr)
+}
+We will introduce a latent variable $b_s$ denoting the bin in which this object lives. 
+Then, we can equivalently write
 \eqn{
 	p\left(b_s \bigr\rvert \bigl\{ f_b \bigr\}\right) &=& f_{b_s} \\ 
-	p\left(M_s, C_s \bigr\rvert b_s \right) &=& \mathcal{N}\bigl(M_s - \mu_{b,0};\sigma_{b,0}^2 \bigr)  \ \mathcal{N}\bigl(C_s - \mu_{b,1};\sigma_{b,1}^2 \bigr)
+	p\left(M_s, C_s \bigr\rvert b_s \right) &=& \mathcal{N}\bigl(M_s - \mu_{b,0};\sigma_{b,0}^2 \bigr)  \ \mathcal{N}\bigl(C_s - \mu_{b,1};\sigma_{b,1}^2 \bigr).
 }
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Inference}
 
+Our population model is fully described by the relative probabilities $\{ f_{b} \}$ (assuming that the bin locations and covariances are fixed). 
+Each object has three parameters: distance $d_s$, true absolute magnitude $m_s$ and color $C_s$.
+The data is the apparent magnitude $\hat{m}_s$ and color $\hat{C}_s$ of each object.
+
+
+Additionally, we will make use of the latent bin variable $b_s$.
+
+We develop a Gibbs sampling strategy. 
+We marginalize over the true absolute magnitude and color.
+We want to draw samples from $p(\{ f_{b} \},\{d_s, b_s\}  \rvert \{\hat{m}_s, \hat{C}_s, \hat{\varpi}_s\})$.
+First, we sample from $\{ f_{b} \}$ given $\{d_s, b_s\}$ and the data. 
+Second, we sample from $b_s$ given $\{ f_{b} \}$ and $\{d_s\}$ and the data. 
+Finally, we sample from $d_s$ given $\{ f_{b} \}$ and $\{b_s\}$ and the data.
+
+The first step is fairly standard: with the bin locations $\{b_s\}$ fixed, the fractional weights $\{ f_{b} \}$ follow a Dirichlet distribution entirely determined by $\{n_b \}$, with $n_b$ the number of objects in the $b$-th bin.
+All the other parameters enter the constant proportionality factor, so the target distribution is
 \eqn{
 	p\left(\bigl\{ f_b \bigr\} \bigr\rvert \bigl\{ d_s, b_s, \hat{m}_s, \hat{C}_s, \hat{\varpi}_s \bigr\} \right) \propto p\bigl( \bigl\{ f_b \bigr\} \bigr\rvert \{n_b \} \bigr) \propto \prod_b \frac{ f_b^{n_b} }{n_b !}
 }
+which is Dirichlet and can easily be sampled from.
 
+This first step is the only part involving all objects. The two other steps, \ie drawing $\{d_s, b_s\}$, can be performed for each object independently (and in parallel).
 
+Drawing the bins $b_s$ is simple, since those are discrete and with the other parameters kept fixed they follow a multinomial with fractional weight
 \eqn{
-	p\left(d_s \bigr\rvert \bigl\{ f_b \bigr\}, b_s, \hat{m}_s, \hat{C}_s, \hat{\varpi}_s\right) &\propto& f_{b_s} \ \mathcal{N}\bigl(\hat{\varpi}_s - d_s^{-1};\sigma_{\hat{\varpi}_s}^2 \bigr) \  \mathcal{N}\bigl( \mu_{b,0} + 5\log_{10}d_s  -\hat{m}_s ;\sigma_{\hat{m}_s}^2 + \sigma_{b,0}^2 \bigr) 
+	p\left(b_s \bigr\rvert \bigl\{ f_b \bigr\}, d_s, \hat{m}_s, \hat{C}_s, \hat{\varpi}_s\right) &\propto& f_{b_s} \  \mathcal{N}\bigl( \mu_{b_s,0} + 5\log_{10}d_s  -\hat{m}_s ;\sigma_{\hat{m}_s}^2 + \sigma_{b_s,0}^2 \bigr) \  \mathcal{N}\bigl(\hat{C}_s - \mu_{b_s,1};\sigma_{\hat{C}_s}^2 + \sigma_{b_s,1}^2 \bigr).
 }
 
-
+The final step is more complex since the target probability of $d_s$ given the other parameters,
 \eqn{
-	p\left(b_s \bigr\rvert \bigl\{ f_b \bigr\}, d_s, \hat{m}_s, \hat{C}_s, \hat{\varpi}_s\right) &\propto& f_{b_s} \  \mathcal{N}\bigl( \mu_{b_s,0} + 5\log_{10}d_s  -\hat{m}_s ;\sigma_{\hat{m}_s}^2 + \sigma_{b_s,0}^2 \bigr) \  \mathcal{N}\bigl(\hat{C}_s - \mu_{b_s,1};\sigma_{\hat{C}_s}^2 + \sigma_{b_s,1}^2 \bigr)
+	p\left(d_s \bigr\rvert \bigl\{ f_b \bigr\}, b_s, \hat{m}_s, \hat{C}_s, \hat{\varpi}_s\right) &\propto&  \mathcal{N}\bigl(\hat{\varpi}_s - d_s^{-1};\sigma_{\hat{\varpi}_s}^2 \bigr) \  \mathcal{N}\bigl( \mu_{b,0} + 5\log_{10}d_s  -\hat{m}_s ;\sigma_{\hat{m}_s}^2 + \sigma_{b,0}^2 \bigr) ,\label{eq:distmargposterior}
 }
+does not follow a simple analytic law.
+However, it is simple enough that it could be gridded and drawn from manually, using an inverse transform method, for example.
+Here, we adopt an even more direct method: given that this expression admits trivial gradients and is visibly unimodal, we can use Hamiltonian Monte Carlo, and sample from \equref{eq:distmargposterior}. 
+with an acceptance rate of 1..
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Discussion}
+
+Technical advantages and drawbacks of our model
+
+Flexibility of tiling, resolution, and kernel shape (covariance) not affecting the technology
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Application to TGAS}
