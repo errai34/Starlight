@@ -164,6 +164,13 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
         self.splits = [self.nobj]
         self.ibins = None
         self.probgrid_magsonly = None
+        self.distances = None
+        self.binamps = None
+        self.bins = None
+        self.binamps = None
+        self.nearestbins = None
+        self.counts = None
+        self.bincounts = None
         self.allbinsigs = np.zeros((self.nobj, self.nbins, self.ncols + 1))
         self.allbinsigs[:, :, 0] = np.sqrt(binsigs[None, :, 0]**2 +
                                            obsmags_err[:, None]**2)
@@ -266,7 +273,7 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
                       np.sum(~np.isfinite(distances)))
                 print("dist", distances[~np.isfinite(distances)])
                 print("grad", distgrads[~np.isfinite(distgrads)])
-                stop
+                # stop
 
             for i in range(num_steps):
 
@@ -339,29 +346,34 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
         return distances
 
     def gibbs_sampler(self, num_samples, num_steps=10):
-        self.distances = 1./self.varpi
-        self.binamps = np.repeat(1./self.nbins, self.nbins)
-        self.bins = np.zeros((self.nobj, ), dtype=int)
-        self.nearestbins = np.zeros((self.nobj, ), dtype=int)
-        self.counts = np.zeros((self.nobj, ), dtype=int)
-        sample_bins_marg(
-            self.bins, self.nearestbins, self.counts,
-            self.nobj, self.nbins, self.ncols,
-            self.varpi, self.varpi_err, self.obsmags, self.obscolors,
-            self.distances, self.binamps, self.binmus, self.allbinsigs)
-        self.bincounts = np.bincount(self.bins, minlength=self.nbins)
-        self.binamps = np.random.dirichlet(self.bincounts)
+        if self.distances is None:
+            self.distances = 1./self.varpi
+        if self.binamps is None or self.bins is None\
+                or self.binamps is None or self.nearestbins is None\
+                or self.counts is None or self.bincounts is None:
+            self.binamps = np.repeat(1./self.nbins, self.nbins)
+            self.bins = np.zeros((self.nobj, ), dtype=int)
+            self.nearestbins = np.zeros((self.nobj, ), dtype=int)
+            self.counts = np.zeros((self.nobj, ), dtype=int)
+            sample_bins_marg(
+                self.bins, self.nearestbins, self.counts,
+                self.nobj, self.nbins, self.ncols,
+                self.varpi, self.varpi_err, self.obsmags, self.obscolors,
+                self.distances, self.binamps, self.binmus, self.allbinsigs)
+            self.mcmcdraw_binamps()
 
-        distgrads = np.zeros((self.nobj, ))
-        lnprob_distgradient_marg(
-                    distgrads, self.nobj, self.nbins, self.ncols,
-                    self.varpi, self.varpi_err, self.obsmags, self.obsmags_err,
-                    self.obscolors, self.obscolors_err,
-                    self.bins, self.distances, self.binamps,
-                    self.binmus, self.binsigs)
-        step_size_hardmax = np.clip(1 / np.abs(distgrads / 0.3), 1e-8, 1e-3)
-        step_size_min = step_size_hardmax / 100
-        step_size_max = step_size_hardmax / 10
+        # distgrads = np.zeros((self.nobj, ))
+        # lnprob_distgradient_marg(
+        #            distgrads, self.nobj, self.nbins, self.ncols,
+        #           self.varpi, self.varpi_err, self.obsmags, self.obsmags_err,
+        #            self.obscolors, self.obscolors_err,
+        #            self.bins, self.distances, self.binamps,
+        #            self.binmus, self.binsigs)
+        # step_size_hardmax = np.clip(1 / np.abs(distgrads / 0.4), 1e-8, 1e-3)
+        # step_size_min = step_size_hardmax / 100
+        # step_size_max = step_size_hardmax / 10
+        step_size_max = self.varpi_err / self.varpi**2 * 1e-1
+        step_size_min = self.varpi_err / self.varpi**2 * 1e-4
 
         from time import time
         distances_samples = np.zeros((num_samples, self.nobj))
