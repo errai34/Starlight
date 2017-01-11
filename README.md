@@ -18,7 +18,7 @@ Fluxes, colors, parallaxes, and population/hierarchical parameters
 
 ## Requirements
 
-Python 3.5, cython, numpy, scipy, pytest, pylint, coveralls, matplotlib </br>
+Python 3.5, cython, numpy, scipy, pytest, astropy, coveralls, matplotlib </br>
 
 ## Authors
 
@@ -27,4 +27,4 @@ David W. Hogg (NYU) (Flatiron)
 
 ## License
 
-Copyright 2016 the authors. The code in this repository is released under the open-source MIT License. See the file LICENSE for more details.
+Copyright 2016-2017 the authors. The code in this repository is released under the open-source MIT License. See the file LICENSE for more details.

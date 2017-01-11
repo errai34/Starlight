@@ -25,7 +25,7 @@ install:
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
   - conda info -a
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib cython pytest pep8
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib cython astropy pytest pep8
   - source activate test-environment
   - pip install -r requirements.txt
   - python setup.py build_ext --inplace
