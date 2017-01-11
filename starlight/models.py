@@ -370,7 +370,7 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
             stop
         return distances
 
-    def gibbs_sampler(self, num_samples, num_steps=10, scale=1, dist_max=1.0):
+    def gibbs_sampler(self, num_samples, num_steps=10, scale=1e-3, dist_max=1.0):
         if self.distances is None:
             self.distances = 1./self.varpi
         if self.binamps is None or self.bins is None\
