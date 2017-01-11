@@ -254,26 +254,41 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
                 self.obscolors, self.obscolors_err,
                 self.bins, distances0, self.binamps,
                 self.binmus, self.binsigs)
-            v = v0 - 0.5 * step_size * distgrads
-            distances = distances0 + step_size * v
 
-            ind_upper = distances > dist_max
-            distances[ind_upper] = 2*dist_max - distances[ind_upper]
-            v[ind_upper] = - v[ind_upper]
-            ind_lower = distances <= dist_min
-            distances[ind_lower] = 2*dist_min - distances[ind_lower]
-            v[ind_lower] = - v[ind_lower]
-            ind_upper = distances > dist_max
-            ind_lower = distances <= dist_min
+            for j in range(12):
+                v = v0 - 0.5 * step_size * distgrads
+                distances = distances0 + step_size * v
+
+                ind_upper = distances > dist_max
+                distances[ind_upper] = 2*dist_max - distances[ind_upper]
+                v[ind_upper] = - v[ind_upper]
+                ind_lower = distances <= dist_min
+                distances[ind_lower] = 2*dist_min - distances[ind_lower]
+                v[ind_lower] = - v[ind_lower]
+                ind_upper = distances > dist_max
+                ind_lower = distances <= dist_min
+
+                ind_uplower = np.logical_or(ind_lower, ind_upper)
+                if(ind_uplower.sum() == 0):
+                    break
+                #print('Decreased stepsize for', ind_uplower.sum(), 'objects')
+                step_size[ind_uplower] /= 10
 
             if np.sum(~np.isfinite(distgrads)) > 0\
                 or np.sum(~np.isfinite(distances)) > 0\
                     or ind_lower.sum() > 0 or ind_upper.sum() > 0:
                 print("num", np.sum(~np.isfinite(distgrads)),
-                      np.sum(~np.isfinite(distances)))
-                print("dist", distances[~np.isfinite(distances)])
-                print("grad", distgrads[~np.isfinite(distgrads)])
-                # stop
+                      np.sum(~np.isfinite(distances)),
+                      ind_lower.sum(), ind_upper.sum())
+                bad = ~np.isfinite(distances)
+                bad |= ind_lower
+                bad |= ind_upper
+                print("dist0", distances0[bad])
+                print("dist", distances[bad])
+                print("disterr", (self.varpi_err/self.varpi**2)[bad])
+                print("grad", distgrads[bad])
+                print("step_sizes", step_size[bad])
+                stop
 
             for i in range(num_steps):
 
@@ -285,22 +300,27 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
                     self.bins, distances, self.binamps,
                     self.binmus, self.binsigs)
 
-                v = v - step_size * distgrads
-                distances = distances + step_size * v
+                for j in range(12):
+                    newv = v - step_size * distgrads
+                    newdistances = distances + step_size * newv
 
-                ind_upper = distances > dist_max
-                distances[ind_upper] = 2*dist_max - distances[ind_upper]
-                v[ind_upper] = - v[ind_upper]
-                ind_lower = distances <= dist_min
-                distances[ind_lower] = 2*dist_min - distances[ind_lower]
-                v[ind_lower] = - v[ind_lower]
-                ind_upper = distances > dist_max
-                ind_lower = distances <= dist_min
-                if np.sum(~np.isfinite(distgrads)) > 0\
-                    or np.sum(~np.isfinite(distances)) > 0\
-                        or ind_lower.sum() > 0 or ind_upper.sum() > 0:
-                    print("stopped leapfrog at", i, end=" - ")
-                    break
+                    ind_upper = newdistances > dist_max
+                    newdistances[ind_upper] = 2*dist_max - newdistances[ind_upper]
+                    newv[ind_upper] = - newv[ind_upper]
+                    ind_lower = newdistances <= dist_min
+                    newdistances[ind_lower] = 2*dist_min - newdistances[ind_lower]
+                    newv[ind_lower] = - newv[ind_lower]
+                    ind_upper = newdistances > dist_max
+                    ind_lower = newdistances <= dist_min
+
+                    ind_uplower = np.logical_or(ind_lower, ind_upper)
+                    if(ind_uplower.sum() == 0):
+                        break
+                    #print('Decreased stepsize (at leapfrog', i, ') for', ind_uplower.sum(), 'objects')
+                    step_size[ind_uplower] /= 10
+
+                distances = newdistances
+                v = newv
 
             lnprob_distgradient_marg(
                 distgrads, self.nobj, self.nbins, self.ncols,
@@ -333,6 +353,7 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
                 print("rejected", end=" - ")
                 exit(1)
 
+        print('Final step_sizes', np.min(step_size), np.mean(step_size), np.max(step_size))
         self.distances = distances
         ind_upper = distances > dist_max
         ind_lower = distances <= dist_min
@@ -345,7 +366,7 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
             stop
         return distances
 
-    def gibbs_sampler(self, num_samples, num_steps=10):
+    def gibbs_sampler(self, num_samples, num_steps=10, scale=1, dist_max=1.0):
         if self.distances is None:
             self.distances = 1./self.varpi
         if self.binamps is None or self.bins is None\
@@ -365,15 +386,17 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
         # distgrads = np.zeros((self.nobj, ))
         # lnprob_distgradient_marg(
         #            distgrads, self.nobj, self.nbins, self.ncols,
-        #           self.varpi, self.varpi_err, self.obsmags, self.obsmags_err,
+        #            self.varpi, self.varpi_err, self.obsmags, self.obsmags_err,
         #            self.obscolors, self.obscolors_err,
         #            self.bins, self.distances, self.binamps,
         #            self.binmus, self.binsigs)
-        # step_size_hardmax = np.clip(1 / np.abs(distgrads / 0.4), 1e-8, 1e-3)
-        # step_size_min = step_size_hardmax / 100
-        # step_size_max = step_size_hardmax / 10
-        step_size_max = self.varpi_err / self.varpi**2 * 1e-1
-        step_size_min = self.varpi_err / self.varpi**2 * 1e-4
+        # distgrads = np.abs(distgrads)
+        # distgrads /= np.min(distgrads)
+        # scale grads between 1 and 100? scaling based on dist errors or gradients?
+        dist_err = self.varpi_err / self.varpi**2
+        step_size_max = scale# / dist_err
+        step_size_min = scale / 100# / dist_err / 10
+        print('step_size_max', np.min(step_size_max), np.mean(step_size_max), np.max(step_size_max))
 
         from time import time
         distances_samples = np.zeros((num_samples, self.nobj))
@@ -393,7 +416,8 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
             distances_samples[i, :] = self.mcmcdraw_distances(
                 num_steps=num_steps,
                 step_size_min=step_size_min,
-                step_size_max=step_size_max)
+                step_size_max=step_size_max,
+                dist_max=dist_max)
             t3 = time()
             binamps_samples[i, :] = self.mcmcdraw_binamps()
             t4 = time()

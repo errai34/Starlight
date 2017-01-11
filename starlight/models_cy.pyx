@@ -288,7 +288,7 @@ def sample_bins_marg(
             if disttobin < mindisttobin:
                 mindisttobin = disttobin
                 nearestbin = b
-            if prob > 1e-10:
+            if prob > 1e-16:
                 count = count + 1
                 ibins[count-1] = b
                 cumpdf[count] = cumpdf[count-1] + prob
