@@ -13,12 +13,15 @@ Fluxes, colors, parallaxes, and population/hierarchical parameters
 **./paper/**: journal paper describing the method </br>
 **./starlight/**: main code (Python/Cython) </br>
 **./tests/**: test suite for the main code </br>
+**./cluster_sources/**: Open clusters members </br>
 **./notebooks/**: demo notebooks using starlight </br>
 **./data/**: some useful inputs for tests/demos </br>
 
 ## Requirements
 
-Python 3.5, cython, numpy, scipy, pytest, astropy, coveralls, matplotlib </br>
+Python 3.5, cython, numpy, scipy, pytest, sfdmap, astropy, coveralls, matplotlib </br>
+
+If you run the notebooks, you will need the SFD dust maps, as packaged in [sfdmap](https://github.com/kbarbary/sfdmap), available at [sfddata](https://github.com/kbarbary/sfddata).
 
 ## Authors
 

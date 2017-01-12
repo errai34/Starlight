@@ -239,6 +239,8 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
     def mcmcdraw_distances(self, num_steps=10, dist_min=0.0, dist_max=0.4,
                            step_size_min=1e-5, step_size_max=1e-2):
         accept = False
+        naivedist = 1/self.varpi
+        naivedist_err = self.varpi_err / self.varpi**2
 
         while accept is False:  # TODO: improve that!
 
@@ -268,11 +270,13 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
                 ind_upper = distances > dist_max
                 ind_lower = distances <= dist_min
 
-                ind_uplower = np.logical_or(ind_lower, ind_upper)
-                if(ind_uplower.sum() == 0):
+                ind_bad = np.logical_or(ind_lower, ind_upper)
+                ind_bad |= ((distances - naivedist)/naivedist_err)**2\
+                    > 20
+                if(ind_bad.sum() == 0):
                     break
-                # print('Decreased stepsize for', ind_uplower.sum(), 'objects')
-                step_size[ind_uplower] /= 10
+                # print('Decreased stepsize for', ind_bad.sum(), 'objects')
+                step_size[ind_bad] /= 10
 
             if np.sum(~np.isfinite(distgrads)) > 0\
                 or np.sum(~np.isfinite(distances)) > 0\
@@ -315,12 +319,14 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
                     ind_upper = newdistances > dist_max
                     ind_lower = newdistances <= dist_min
 
-                    ind_uplower = np.logical_or(ind_lower, ind_upper)
-                    if(ind_uplower.sum() == 0):
+                    ind_bad = np.logical_or(ind_bad, ind_bad)
+                    ind_bad |= ((newdistances - naivedist)/naivedist_err)**2\
+                        > 20
+                    if(ind_bad.sum() == 0):
                         break
                     # print('Decreased stepsize (at leapfrog', i, ') for',
-                    # ind_uplower.sum(), 'objects')
-                    step_size[ind_uplower] /= 10
+                    # ind_bad.sum(), 'objects')
+                    step_size[ind_bad] /= 10
 
                 distances = newdistances
                 v = newv
