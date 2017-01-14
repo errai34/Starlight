@@ -272,7 +272,7 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
 
                 ind_bad = np.logical_or(ind_lower, ind_upper)
                 ind_bad |= ((distances - naivedist)/naivedist_err)**2\
-                    > 20
+                    > 10
                 if(ind_bad.sum() == 0):
                     break
                 # print('Decreased stepsize for', ind_bad.sum(), 'objects')
@@ -321,7 +321,7 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
 
                     ind_bad = np.logical_or(ind_bad, ind_bad)
                     ind_bad |= ((newdistances - naivedist)/naivedist_err)**2\
-                        > 20
+                        > 10
                     if(ind_bad.sum() == 0):
                         break
                     # print('Decreased stepsize (at leapfrog', i, ') for',
