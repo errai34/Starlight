@@ -3,15 +3,18 @@ notifications:
     on_failure: always
     on_success: change
 language: python
+addons:
+    apt:
+        packages:
+            - texlive-latex-recommended
+            - texlive-latex-extra
+            - texlive-fonts-recommended
+            - texlive-fonts-extra
+            - texlive-humanities
 python:
   - "3.5"
 before_install:
   - sudo apt-get update -qq
-  - sudo add-apt-repository -y ppa:texlive-backports/ppa
-  - sudo apt-get update -qq
-  - sudo apt-get install texlive-xetex texlive-latex-recommended texlive-latex-extra
-  - sudo apt-get install texlive-fonts-recommended texlive-fonts-extra
-  - sudo apt-get install texlive-science texlive-humanities
   - sudo apt-get install libgsl0-dev libatlas-base-dev
   - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
   - chmod +x miniconda.sh
@@ -43,7 +46,7 @@ script:
   - make
 after_success:
   coveralls
-  if [ -n "$GITHUB_API_KEY" ]; then # copyright: Dan Foreman-Mackey's repos
+  if [ -n "$GITHUB_API_KEY" ]; then
     cd $TRAVIS_BUILD_DIR
     git checkout --orphan $TRAVIS_BRANCH-pdf
     git rm -rf .
