@@ -3,7 +3,6 @@ cluster_sources
 cluster_names.txt
 old_stuff
 *.html
-paper/shrinkingparallaxes.pdf
 *_cy.c
 *.aux
 *.out

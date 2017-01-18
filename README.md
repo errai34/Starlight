@@ -4,7 +4,7 @@ Fluxes, colors, parallaxes, and population/hierarchical parameters
 
 [![Build Status](https://travis-ci.org/ixkael/Starlight.svg?branch=master)](https://travis-ci.org/ixkael/Starlight)
 [![Coverage Status](https://coveralls.io/repos/github/ixkael/Starlight/badge.svg?branch=master)](https://coveralls.io/github/ixkael/Starlight?branch=master)
-[![Latest PDF](https://img.shields.io/badge/PDF-latest-orange.svg)](https://github.com/ixkael/Starlight/blob/master-pdf/paper/shrinkingparallaxes.pdf)
+[![Latest PDF](https://img.shields.io/badge/PDF-latest-orange.svg)](https://github.com/ixkael/Starlight/blob/master/paper/shrinkingparallaxes.pdf)
 
 
 **Tests**: pytest for unit tests, PEP8 for code style, coveralls for test coverage.
