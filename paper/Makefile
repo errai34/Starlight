@@ -1,3 +1,4 @@
+# copyright: Dan Foreman-Mackey's repos
 LATEX       = pdflatex -interaction=nonstopmode -halt-on-error
 TMP_SUFFS   = .pdf .aux .bbl .blg .log .dvi .ps .eps .out .gz Notes.bib
 

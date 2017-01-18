@@ -315,7 +315,7 @@ The first three panels shows the change in the mean, standard deviation, and SNR
 \begin{figure}
 \hspace*{-2mm}\includegraphics[width=15.7cm]{model_dist_pdfs.pdf}
 \caption{Posterior distributions on the distances of a few objects involved in constraining the model shown in \figrefs{fig:colmagdiag_mainsample}{fig:colmagdiag_mainsample_dist}. 
-The improvement in distance SNR is also shown. The objects are also placed on the inferred color--magnitude diagram, to highlight that the shrinkage is most efficient for low-SNR objects and the densest parts of the color diagram.}
+The improvement in distance SNR is also shown. The objects are also placed on the inferred color--magnitude diagram, to highlight that the shrinkage is most efficient for low-SNR objects and the densest parts of the color diagram.}\label{fig:model_dist_pdfs}
 \end{figure}
 
 We consider the Gaia data \citep{gaia}, specifically the first data release (DR1) of the Tycho-Gaia astrometric solution\citep[hereafter TGAS][]{gaia_dr1}.
@@ -348,9 +348,10 @@ Nevertheless, the standard deviation provides a useful metric.
 We measure that on average the distance SNR improves by 26\% and the distance uncertainty decreases by 40\%.
 We find that 12\% of the objects have their distance uncertainty halved after the inclusion of color--magnitude information via our hierarchical model.
 This shrinkage of the distance uncertainties is most efficient in the most densely populated regions of color--magnitude space.
-\figref{fig:colmagdiag_mainsample_dist} shows the distance posterior distributions obtained with our method for a few randomly chosen object, further illustrating the shrinkage of the uncertainties.
+\figref{fig:model_dist_pdfs} shows the distance posterior distributions obtained with our method for a few randomly chosen object, further illustrating the shrinkage of the uncertainties.
 For clarity we have smoothed the distance samples obtained with the Gibbs sampler.
 We also place these objects in the color--magnitude diagram.
+The errors are obtained by resampling.
 
 \figref{fig:colmagdiag_othersamples} shows the  mean and standard deviation of the color--magnitude diagram resulting from performing the inference on the subsamples with parallax SNR cuts (\ie splitting our main sample at parallax SNR of 8). 
 Those demonstrate that including the noisiest objects is essential for correctly inferring the fainter regions of magnitude space.
