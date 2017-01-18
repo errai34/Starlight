@@ -31,7 +31,7 @@
 \noindent\footnotesize
 {\noindent\footnotesize\textsc{\@journalinfo}}\par
 {\noindent\scriptsize Preprint typeset using \LaTeX\ style AASTeX6\\
-With modifications by David W. Hogg and Daniel Foreman-Mackey
+With modifications by David W. Hogg, Daniel Foreman-Mackey, Boris Leistedt
 }\par\vspace*{-\baselineskip}\vspace*{0.625in}
 }%
 \makeatother
@@ -55,7 +55,7 @@ With modifications by David W. Hogg and Daniel Foreman-Mackey
 % end of AASTeX mods %
 % ------------------ %
 
-\journalinfo{ApJ submitted}
+\journalinfo{Prepared for ApJ}
 
 
 
@@ -113,10 +113,10 @@ We present a hierarchical probabilistic model for improving parallax-based stell
 This is achieved with a data driven model of the color--magnitude diagram, not relying on stellar models but instead on the  relative abundances of stars in color--magnitude cells.
 The latter are inferred from noisy magnitudes and parallaxes using an efficient sampling method.
 This approach is equivalent to deconvolving observational errors into a probabilistic, noiseless color--magnitude diagram, which can be useful for a range of applications. 
-We focus on leveraging multicolor information to provide more accurate stellar distance estimates.
-We demonstrate the power of this approach on the Gaia TGAS data sample cross-matched with APASS magnitudes.
-We find that distance estimates are significantly improved for the noisiest parallaxes and portions of the color--magnitude diagram. 
-In particular, the number of objects with parallax signal-to-noise ratio lower than 20 is halved, and distance errors are also halved for 20\% of objects.
+We focus on leveraging color--magnitude information to provide more accurate stellar distance estimates.
+We demonstrate the power of this approach on the Gaia TGAS stars with APASS magnitudes.
+We find that distance estimates are significantly improved for the noisiest parallaxes and regions of the color--magnitude diagram. 
+In particular, the average distance signal-to-noise and uncertainty improve by 26\% and 40\%, respectively, with 12\% of the objects having the latter reduced by a factor of 2.
 We make our improved distance estimates publicly available.
 \end{abstract}
 
@@ -127,6 +127,8 @@ We make our improved distance estimates publicly available.
 \section{Introduction}
 
 TODO
+
+% Say our assumptions
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Model}
@@ -162,8 +164,9 @@ We only consider one color for simplicity, but it should be noted that the model
 Those intrinsic properties are not directly observable.
 Instead, all we have at our disposal is a set of apparent magnitude and parallax measurements.  
 The estimate of the parallax is denoted $\hat{\varpi}_s$ and is assumed to have a Gaussian variance $\sigma_{\hat{\varpi}_s}^2$.
-We will consider two magnitudes only, $\hat{m}_s$ and $\hat{m}^\prime_s$, assumed to be  uncorrelated and have Gaussian variances $\sigma_{\hat{m}_s}^2$ and $\sigma_{\hat{m}^\prime_s}^2$.
+We will consider two magnitudes only, $\hat{m}_s$ and $\hat{m}^\prime_s$, assumed to be uncorrelated and have Gaussian variances $\sigma_{\hat{m}_s}^2$ and $\sigma_{\hat{m}^\prime_s}^2$.
 We will use the first one $\hat{m}_s$ as a reference magnitude for infer the absolute magnitude $M_s$, and the second one to form a color estimate $\hat{C}_s =\hat{m}^\prime_s - \hat{m}_s $ with Gaussian variance $\sigma_{\hat{C}_s}^2 = \sigma_{\hat{m}_s}^2 + \sigma_{\hat{m}^\prime_s}^2$.
+We assumed that all magnitudes are properly dereddenned, \ie that the absorption by interstellar dust has been corrected for.
 
 In this work, we aim at estimating the distance $d_s$ of each star from the noisy data $\hat{m}_s$,  $\hat{C}_s$ and $\hat{\varpi}_s$. 
 While distance is directly connected to the parallax via $\varpi_s=1/d_s$, it is also informed by the apparent magnitude since $m_s = M_s + 5\log_{10} d_s$ where $d_s$ is expressed in units of $10$ pc.
@@ -180,7 +183,7 @@ This might be expensive to perform numerically, but the choices we will make bel
 The first term of \equref{eq:naivedistposterior} is a likelihood function, and the second term is the prior. 
 Assuming that the magnitude and parallax estimates are independent, the likelihood function factorizes as the product of two terms, 
 \equ{
-	p\left(\hat{\varpi}_s \bigr\rvert d_s\right) = \mathcal{N}\bigl(\hat{\varpi}_s - d_s^{-1};\sigma_{\hat{\varpi}_s}^2 \bigr),
+	p\left(\hat{\varpi}_s \bigr\rvert d_s\right) = \mathcal{N}\bigl(\hat{\varpi}_s - d_s^{-1};\sigma_{\hat{\varpi}_s}^2 \bigr),\label{eq:parallaxlike}
 }
 and
 \equ{
@@ -188,7 +191,7 @@ and
 }
 
 The final term, $ p\bigl( M_s, d_s, C_s \bigr) $, is the prior knowledge about the distances, magnitudes, and colors of stars. 
-\todo{Discuss how this is usually handled.}
+\todo{Cite literature and discuss how this is usually handled.}
 
 We will adopt a uniform distance prior and focus on the magnitude--color term, which we parametrize as $p\left(M_s, C_s  \bigr\rvert \{ f_{b} \} \right) $.
 We construct a model of the relative abundance of objects in color--magnitude cells (\ie, in two dimensions: absolute magnitude and color).
@@ -228,7 +231,7 @@ Thus, the full posterior of interest is $p(\{ d_s \}, \{ f_{b} \} | \{ \hat{m}_s
 
 Given the number of parameters and the natural degeneracies between magnitudes and distances, standard sampling techniques may be difficult to apply.
 Thus, we develop a Gibbs sampling strategy, to draw samples from $p(\{ f_{b} \},\{d_s, b_s\}  \rvert \{\hat{m}_s, \hat{C}_s, \hat{\varpi}_s\})$, including the bins $\{ b_s\}$ since it will simplify the inference. 
-At the $i$th iteration, we will draw new values of the $\{ f_{b} \}$ and $\{d_s, b_s\}$ parameters given the parameters from the previous iteration, in the following order (the conditional distribution will be made explicit below):
+At the $i$th iteration, we will draw new values of the $\{ f_{b} \}$ and $\{d_s, b_s\}$ parameters given the values of the previous iteration, in the following order (the conditional distribution will be made explicit below):
 First, draw $\{ f_{b} \}^{(i)}$ given $\{d_s, b_s\}^{(i-1)}$ and the data. 
 Second, for each object draw $b_s^{(i)}$ given $\{ f_{b} \}^{(i)}$ and $\{d_s\}^{(i-1)}$ and the data. 
 Finally, for each object draw $d_s^{(i)}$ given $\{ f_{b} \}^{(i)}$ and $\{b_s\}^{(i)}$ and the data.
@@ -236,6 +239,7 @@ The sequence $\{ f_{b} \}^{(i)},\{d_s, b_s\}^{(i)}$ for $i=1, \cdots, N_\mathrm{
 This allows us to avoid the magnitude--distance degeneracies and parallelize the second and third steps over objects.
 We now detail how to draw from the correct conditional distributions.
 
+\todo{Dirichlet-multinomial}
 The first draw is fairly standard: with the bin locations $\{b_s\}$ fixed, the fractional weights $\{ f_{b} \}$ follow a Dirichlet distribution entirely determined by $\{n_b \}$, with $n_b$ the number of objects in the $b$-th bin.
 All the other parameters enter the constant proportionality factor, so the target distribution is
 \eqn{
@@ -256,22 +260,36 @@ The final step is more complex since the target probability of $d_s$ given the o
 does not follow an analytic law that allows direct sampling.
 However, it is simple enough that it could be gridded and sampled using an inverse transform method, for example.
 Yet, we adopt an even more direct method: given that this expression admits trivial gradients and is visibly unimodal, we can use Hamiltonian Monte Carlo, and sample from \equref{eq:distmargposterior}. 
-We dynamically adjust the stepsize to optimize the exploration of this distribution: we use $L=10$ number of steps, and the step size $\epsilon = 0.1 \times \sigma_{\hat{\varpi}_s} / \hat{\varpi}_s^2$, clipped so that $-5 < \log_{10} \epsilon < -2$.
+We dynamically adjust the stepsize to optimize the exploration of this distribution: we use $10$ steps, with step size $\epsilon = 0.1 \times \sigma_{\hat{\varpi}_s} / \hat{\varpi}_s^2$, clipped so that $-5 < \log_{10} \epsilon < -2$.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Discussion}
 
+\begin{figure}
+\hspace*{-3mm}\includegraphics[width=15.75cm]{datasummary.pdf}
+\caption{Distributions of the magnitude, color, and parallax signal-to-noise ratios (SNR) of the Gaia TGAS+APASS data we train and validate our model on. The line indicates the parallax SNR level used to split the data into two sub-samples containing the `best' and `worst' parallaxes. The right panel shows the average parallax SNR in color--magnitude cells, illustrating how the upper part of the color--magnitude diagram is dominated by low-SNR objects. Reconstructing the noiseless color--diagram requires an inference framework capable of correctly dealing with uncertainties in colors, magnitudes, and parallaxes.}
+\label{fig:datasummary}
+\end{figure}
+
 We now briefly discuss the advantages and limitations of our approach.
 
-First, we note that we could also infer the distance distribution with this formalism, by adding an other histogram and inferring its parameters, for example. 
-Although it is technically trivial to add this layer to our framework, we haven't developed it for this application since we focus on how color--magnitude information informs distance estimates.
+First, we note that we could also infer the distance distribution with this formalism, by adding another kernel mixture and inferring its parameters, for example. 
+Although it is technically trivial to add this layer to our framework, we have not developed it since we focus on how color--magnitude information informs distance estimates.
 For the same reason, we have adopted uniform distance priors.
+Similarly, our framework can be extended to other observables such as proper motions and velocities.
 
-Second, our kernel mixture model offers a significant amount of freedom.
-Changing the kernels or their positions does not affect our inference framework if they are differentiable (for the gradients to exist for the Hamiltonian Monte Carlo draw) and can be integrated with Gaussian likelihood functions (for the analytic marginalization of true magnitude and color).
+Second, our kernel mixture model offers a significant amount of freedom to describe the color--magnitude diagram.
+In fact, changing the kernels does not affect our inference framework if they are differentiable (for the gradients to exist for the Hamiltonian Monte Carlo draw) and can be integrated with Gaussian likelihood functions (for the analytic marginalization of true magnitude and color).
 Note that we have not optimized the positions and sizes of the kernels. 
 Compared to a standard Gaussian Mixture model, our tiling of color--magnitude space requires more components (many of which are zero) but is easy to initialize, and also converges quickly. 
+
+Third, we have assumed that the magnitudes are dust-corrected. 
+However, dust extinction depends on distance, which is a parameter of our model.
+Furthermore, reliable 3D dust maps are only available and reliable for a limited region of space.
+Thus, in principle, dust corrections should really be inferred jointly with the absolute magnitudes and colors of the data at hand. 
+The approximation we use is sufficient for inferring the color--magnitude diagram and improving distance estimates.
+Jointly modelling the dust might improve the accuracy of this process and the uncertainty shrinkage.
 
 %Strategy: use large number of noisy parallaxes and colors to infer fb and distances.
 %Then apply this prior as model to other data via gridding.
@@ -280,14 +298,8 @@ Compared to a standard Gaussian Mixture model, our tiling of color--magnitude sp
 \section{Application to Gaia}
 
 \begin{figure}
-\hspace*{-3mm}\includegraphics[width=15.75cm]{datasummary.pdf}
-\caption{Distributions of the magnitude, color, and parallax signal-to-noise ratios (SNR) of the Gaia TGAS+APASS data we train and validate our model on. The line indicates the parallax SNR level used to split the data into two sub-samples containing the `best' and `worst' parallaxes.}
-\label{fig:datasummary}
-\end{figure}
-
-\begin{figure}
 \hspace*{-3mm}\includegraphics[width=15cm]{colmagdiag_mainsample.pdf}
-\caption{Left: resampled noisy data, obtained by sampling parallaxes, magnitude and color based on the measurements and their errors. Middle and right: mean and standard deviation of our model, which is the result of deconvolving all observational errors of the data shown in the left panel and in \figref{fig:datasummary} into a noiseless color--magnitude diagram described as a mixture of Gaussians tiling the color--magnitude region of interest. }
+\caption{Upper panels: color--diagram based on the noisy data, obtained with magnitude and parallax point estimates (left) and by sampling parallaxes, magnitude and color based on the measurements and their errors (right). Middle and right: mean and standard deviation of our model, which is the result of deconvolving all observational errors of the data shown in the upper panels and in \figref{fig:datasummary} into a noiseless color--magnitude diagram described as a mixture of Gaussians tiling the color--magnitude region of interest. }
 \label{fig:colmagdiag_mainsample}
 \end{figure}
 
@@ -295,7 +307,7 @@ Compared to a standard Gaussian Mixture model, our tiling of color--magnitude sp
 \begin{figure}
 \hspace*{-3mm}\includegraphics[width=15.5cm]{colmagdiag_mainsample_dist.pdf}
 \caption{Distances obtained when sampling the hierarchical model which produced the color--diagram shown in \figref{fig:colmagdiag_mainsample}. 
-The first three panels shows the change in the mean, standard deviation, and SNR of the distance estimate (based on the posterior distribution). The final panel shows the ratio of standard deviations placed in the color--diagram. The shrinkage of the uncertainties is a consequence of the hierarchical natural of the model, and is most efficient for low SNR objects and low absolute magnitudes. Note that the number counts are in logarithmic scale for clarify.}
+The first three panels shows the change in the mean, standard deviation, and SNR of the distance estimate (based on the posterior distribution), with the number counts in logarithmic scale. The final panel shows the ratio of standard deviations placed in the color--diagram (standard method over hierarchical model). The shrinkage of the uncertainties is a consequence of the hierarchical natural of the model, and is most efficient for low-SNR objects and the densest parts of the color diagram.}
 \label{fig:colmagdiag_mainsample_dist}
 \end{figure}
 
@@ -303,48 +315,65 @@ The first three panels shows the change in the mean, standard deviation, and SNR
 \begin{figure}
 \hspace*{-2mm}\includegraphics[width=15.7cm]{model_dist_pdfs.pdf}
 \caption{Posterior distributions on the distances of a few objects involved in constraining the model shown in \figrefs{fig:colmagdiag_mainsample}{fig:colmagdiag_mainsample_dist}. 
-The improvement in distance SNR is also shown.}
+The improvement in distance SNR is also shown. The objects are also placed on the inferred color--magnitude diagram, to highlight that the shrinkage is most efficient for low-SNR objects and the densest parts of the color diagram.}
 \end{figure}
 
-We consider the Gaia data \citep{gaia}, more specifically the first data release (DR1) of the Tycho-Gaia astrometric solution\citep[hereafter TGAS][]{gaia_dr1}.
-We restrict our attention to the objects with valid B and V band magnitudes from the AAVSO Photometric All Sky Survey (APASS) Data Release 9 \citep{munari2014, hendenmunari2014}. 
+We consider the Gaia data \citep{gaia}, specifically the first data release (DR1) of the Tycho-Gaia astrometric solution\citep[hereafter TGAS][]{gaia_dr1}.
+We restrict our attention to the objects with valid B and V magnitudes from the AAVSO Photometric All Sky Survey (APASS) Data Release 9 \citep{munari2014, hendenmunari2014}. 
 We also remove objects with parallax signal-to-noise ratio (SNR) lower than 1. 
-This significantly reduces the number of stars but allows us to have magnitude, color, and parallax information for 1,464,782 objects. 
-We don't apply more stringent parallax or color cuts since the purpose of our method is exactly to construct a color--magnitude model from both low and high SNR objects. 
+This leads to 1.4 million objects with magnitude, color, and parallax information. 
+We don't apply more stringent parallax or color cuts since the purpose of our method is exactly to construct a color--magnitude model from both low and high-SNR objects. 
+Finally, we apply dust corrections based on position and distance point estimate ($1/\hat{\varpi}$) with the three-dimensional dust map of \cite{Green2015bayestar}. 
+For large distances when the latter is undefined we use corrections from the 2D dust map of \cite{sfd1998}.
+Our data sample is summarized in \figref{fig:datasummary}, which shows the magnitude, color, and parallax SNR distributions.
+The bulk of the objects has parallax SNR lower than 10 and is at $M_V  < 4$, in the upper part of the color--magnitude diagram.
+This highlights the need for a correct inference framework that exploits all objects, since focusing on high-SNR objects would bias the results and prevent us from correctly inferring the fainter regions of the color--magnitude space.
 
 We create a validation sample by randomly extracting 10\% of the objects. 
-As detailed below, we will add significant amount of parallax noise and verify that our framework improves the distance estimates consistently with the original estimates. 
+As detailed below, we will add significant amount of noise to the parallax estimates and verify that our framework improves the distances consistently with the original values. 
 We also split the main sample according to parallax SNR, into two samples of equal size containing the `best' and a `worst' parallaxes. 
 We perform the inference on those two samples as well as the combined one. 
-Their characteristics are shown in \figref{fig:datasummary}.
-The bulk of the objects has parallax SNR lower than 10. 
+For each of the three samples, we use the Gibbs sampler presented above to draw 10,000 samples of the fractional bin weights, bins, and distances. 
 
-For each of the three samples, we use the Gibbs sampler presented above to draw 10000 samples of the fractional bin weights, bins, and distances. 
-
-The mean and standard deviation of the resulting color--magnitude diagram (with bins and distances marginalized) are shown in \figref{fig:colmagdiag_mainsample}.
-The top panels of this figure also show the data used to construct the model.
+The mean and standard deviation of the resulting color--magnitude diagram (with bins and distances marginalized) are presented in \figref{fig:colmagdiag_mainsample}.
+The top panels also show the input data, with and without resampling according to the estimates and their errors.
 As expected, the recovered models are significantly narrower than the data since we are effectively deconvolving observational errors to produce a noiseless color--magnitude diagram. 
+Most classical features are recovered: the main sequence, its turn-over, and the giant branch.
 
+\figref{fig:colmagdiag_mainsample_dist} shows the stellar distances with bins and color--magnitude model marginalized over. 
+We compute the mean and standard deviation using samples of the joint posterior distribution. 
+We also compute mean and standard deviation using samples of the parallax likelihood, \ie not using our hierarchical model but only the parallax information of \equref{eq:parallaxlike}.
+Note that the posterior distributions are not Gaussian, as expected and also shown below. 
+Nevertheless, the standard deviation provides a useful metric. 
+We measure that on average the distance SNR improves by 26\% and the distance uncertainty decreases by 40\%.
+We find that 12\% of the objects have their distance uncertainty halved after the inclusion of color--magnitude information via our hierarchical model.
+This shrinkage of the distance uncertainties is most efficient in the most densely populated regions of color--magnitude space.
+\figref{fig:colmagdiag_mainsample_dist} shows the distance posterior distributions obtained with our method for a few randomly chosen object, further illustrating the shrinkage of the uncertainties.
+For clarity we have smoothed the distance samples obtained with the Gibbs sampler.
+We also place these objects in the color--magnitude diagram.
 
-\figref{fig:colmagdiag_mainsample_dist} shows the distances of those objects (with bins and color--magnitude model marginalized over). 
-We compute the mean and standard deviation of the distance, using the samples of the joint posterior distribution. 
-We also compute mean and standard deviation for samples of the parallax likelihood, \ie not using our hierarhical model but only the parallax information.
-Note that the posterior distributions are not Gaussian, as expected and also shown below, but the standard deviation nevertheless provides a useful metric. 
-
-\figref{fig:colmagdiag_mainsample_dist} shows a few of the distance posterior distributions obtained with our sampler (after smoothing), illustrating the shrinkage of the uncertainties.
-
-\figref{fig:colmagdiag_othersamples} shows the results on the subsamples obtained with parallax SNR cuts. 
-Those demonstrate that including the noisiest objects is essential for inferring the fainter regions of magnitude space.
+\figref{fig:colmagdiag_othersamples} shows the  mean and standard deviation of the color--magnitude diagram resulting from performing the inference on the subsamples with parallax SNR cuts (\ie splitting our main sample at parallax SNR of 8). 
+Those demonstrate that including the noisiest objects is essential for correctly inferring the fainter regions of magnitude space.
 The main sequence is well recovered with the high-SNR objects, while the red giant branch is barely detected. 
 By contrast, it is well recovered with the low-SNR objects, but the main sequence is then partially erased.
 This is a natural consequence of the SNR increasing with absolute magnitude.
 This highlights the importance of a correct probabilistic framework, capable of correctly exploiting data with heterogeneous noise to reconstruct the noiseless color--magnitude diagram.
 
-
 We now turn to the validation sample. 
 Since we do not know the true distances for those objects, we take a different approach: we add noise to the parallax estimate, at a level equal to ten times the parallax error. 
 We then compute the posterior distribution on the distance (on a distance grid) using the parallax likelihood as well as the distance posterior. We simply use the mean model shown in \figref{fig:colmagdiag_mainsample} as a color-magnitude prior. 
 The results are shown in \figref{fig:cv_metrics}.
+Given that those objects have significant amounts of noise, causing the distance posterior distribution to be highly non-Gaussian, the mean distance overestimates the true distance (the original parallax-based estimate). 
+The hierarchical model significantly decreases this effect, \ie improves the distance estimates both in terms of mean and uncertainty, demonstrating the validity of our inference scheme.
+
+Finally, we perform an additional test of our method on open clusters.
+We retrieve the coordinates, distances, and proper motions, of known open clusters from the WEBDA database\footnote{www.univie.ac.at/webda/}.
+From our TGAS-APASS sample, we select the stars near each cluster, in a radius corresponding to 3 pc.
+We then use a Gaussian Mixture model to describe the distribution of proper motions and parallaxes of those objects (using the point estimates and ignoring the errors).
+We identify the component nearest to the open cluster proper motion and parallax. 
+The stars associated with this component are visually inspected and confirmed as cluster members.
+\figref{fig:cv_metrics} shows the result of applying our framework to those objects, \ie using the color--diagram inferred above to inform the distance posterior distribution.
+The distances SNRs are improved and the point estimates change towards the open cluster distance, even though the improvement is relatively modest due to the proximity of those clusters and the good parallax SNR of the cluster members we identified.
 
 \begin{figure}
 \hspace*{-4mm}\includegraphics[width=15.9cm]{colmagdiag_othersamples.pdf}
@@ -354,7 +383,7 @@ The results are shown in \figref{fig:cv_metrics}.
 
 \begin{figure}
 \hspace*{-3mm}\includegraphics[width=16cm]{cv_metrics.pdf}
-\caption{Mean, standard deviation, and scaled residuals (truth - mean estimate, divided by standard deviation) of the distances in our validation sample (based on the posterior distributions).
+\caption{Mean, standard deviation, and scaled residuals (truth - mean estimate, divided by standard deviation) of the distances in our validation sample, based on the posterior distributions.
 Given the more significant levels of noise the distance are more significantly improved than in our main sample. 
 The mean residuals are not zero due to the non-Gaussianity of the posterior distributions.}
 \label{fig:cv_metrics}
@@ -373,15 +402,18 @@ The mean residuals are not zero due to the non-Gaussianity of the posterior dist
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Conclusion}
 
-Could include distance prior
-Jointly infer distance distribution and dust
+TODO
 
+%Could include distance prior
+%Jointly infer distance distribution and dust
+%Assumed dust is solved, but it isn't!
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \acknowledgments
 
-%\todo{Add Andy's Acknowledgements}.
+\todo{Any acknowledgements missing?}
+
 BL was supported by NASA through the Einstein Postdoctoral Fellowship (award number PF6-170154).
 DWH was partially supported by the NSF (AST-1517237) and the Moore--Sloan Data Science Environment at NYU.
 

@@ -1,5 +1,6 @@
+notebooks/*.pdf
 cluster_sources
-
+cluster_names.txt
 old_stuff
 *.html
 paper/shrinkingparallaxes.pdf
@@ -7,6 +8,8 @@ paper/shrinkingparallaxes.pdf
 *.aux
 *.out
 *.synctex.gz
+*.blg
+*Notes.bib
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

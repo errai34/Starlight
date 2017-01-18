@@ -3,6 +3,13 @@ notifications:
     on_failure: always
     on_success: change
 language: python
+addons:
+    apt:
+        packages:
+            - texlive-latex-recommended
+            - texlive-latex-extra
+            - texlive-fonts-recommended
+            - texlive-fonts-extra
 python:
   - "3.5"
 before_install:
@@ -34,5 +41,15 @@ script:
   - coverage run --source starlight -m py.test
   - pep8 starlight/*py
   - pep8 tests/*py
+  - cd paper
+  - make
 after_success:
   coveralls
+  if [ -n "$GITHUB_API_KEY" ]; then
+    cd $TRAVIS_BUILD_DIR
+    git checkout --orphan $TRAVIS_BRANCH-pdf
+    git rm -rf .
+    git add -f shrinkingparallaxes.pdf
+    git -c user.name='travis' -c user.email='travis' commit -m "current pdf"
+    git push -q -f https://$GITHUB_USER:$GITHUB_API_KEY@github.com/$TRAVIS_REPO_SLUG $TRAVIS_BRANCH-pdf
+  fi

@@ -1,9 +1,16 @@
-LATEX       = pdflatex
-CHECK_RERUN = grep "Rerun to get" $*.log
+LATEX       = pdflatex -interaction=nonstopmode -halt-on-error
+TMP_SUFFS   = .pdf .aux .bbl .blg .log .dvi .ps .eps .out .gz Notes.bib
 
 all: shrinkingparallaxes.pdf
 
-%.pdf: %.tex
-	${LATEX} $<
-	( ${CHECK_RERUN} && ${LATEX} $< ) || echo "Done."
-	( ${CHECK_RERUN} && ${LATEX} $< ) || echo "Done."
+NAME = shrinkingparallaxes
+
+${NAME}.pdf: ${NAME}.tex *.bib
+	${LATEX} ${NAME}
+	bibtex ${NAME}
+	${LATEX} ${NAME}
+	( grep "Rerun to get" ${NAME}.log && ${LATEX} ${NAME} ) || echo "Done."
+	( grep "Rerun to get" ${NAME}.log && ${LATEX} ${NAME} ) || echo "Done."
+
+clean:
+	rm -f $(foreach suff, ${TMP_SUFFS}, ${NAME}${suff})

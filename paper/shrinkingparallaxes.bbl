@@ -1,0 +1,37 @@
+\begin{thebibliography}{}
+\expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
+
+\bibitem[{{Gaia Collaboration} {et~al.}(2016){Gaia Collaboration}, {Prusti},
+  {de Bruijne}, {Brown}, {Vallenari}, {Babusiaux}, {Bailer-Jones}, {Bastian},
+  {Biermann}, {Evans}, \& et~al.}]{gaia}
+{Gaia Collaboration}, {Prusti}, T., {de Bruijne}, J.~H.~J., {et~al.} 2016,
+  \aap, 595, A1
+
+\bibitem[{{Henden} \& {Munari}(2014)}]{hendenmunari2014}
+{Henden}, A., \& {Munari}, U. 2014, Contributions of the Astronomical
+  Observatory Skalnate Pleso, 43, 518
+
+\bibitem[{{Lindegren} {et~al.}(2016){Lindegren}, {Lammers}, {Bastian},
+  {Hern{\'a}ndez}, {Klioner}, {Hobbs}, {Bombrun}, {Michalik}, {Ramos-Lerate},
+  {Butkevich}, {Comoretto}, {Joliet}, {Holl}, {Hutton}, {Parsons},
+  {Steidelm{\"u}ller}, {Abbas}, {Altmann}, {Andrei}, {Anton}, {Bach},
+  {Barache}, {Becciani}, {Berthier}, {Bianchi}, {Biermann}, {Bouquillon},
+  {Bourda}, {Br{\"u}semeister}, {Bucciarelli}, {Busonero}, {Carlucci},
+  {Casta{\~n}eda}, {Charlot}, {Clotet}, {Crosta}, {Davidson}, {de Felice},
+  {Drimmel}, {Fabricius}, {Fienga}, {Figueras}, {Fraile}, {Gai}, {Garralda},
+  {Geyer}, {Gonz{\'a}lez-Vidal}, {Guerra}, {Hambly}, {Hauser}, {Jordan},
+  {Lattanzi}, {Lenhardt}, {Liao}, {L{\"o}ffler}, {McMillan}, {Mignard}, {Mora},
+  {Morbidelli}, {Portell}, {Riva}, {Sarasso}, {Serraller}, {Siddiqui}, {Smart},
+  {Spagna}, {Stampa}, {Steele}, {Taris}, {Torra}, {van Reeven}, {Vecchiato},
+  {Zschocke}, {de Bruijne}, {Gracia}, {Raison}, {Lister}, {Marchant},
+  {Messineo}, {Soffel}, {Osorio}, {de Torres}, \& {O'Mullane}}]{gaia_dr1}
+{Lindegren}, L., {Lammers}, U., {Bastian}, U., {et~al.} 2016, \aap, 595, A4
+
+\bibitem[{{Munari} {et~al.}(2014){Munari}, {Henden}, {Frigo}, {Zwitter},
+  {Bienaym{\'e}}, {Bland-Hawthorn}, {Boeche}, {Freeman}, {Gibson}, {Gilmore},
+  {Grebel}, {Helmi}, {Kordopatis}, {Levine}, {Navarro}, {Parker}, {Reid},
+  {Seabroke}, {Siebert}, {Siviero}, {Smith}, {Steinmetz}, {Templeton},
+  {Terrell}, {Welch}, {Williams}, \& {Wyse}}]{munari2014}
+{Munari}, U., {Henden}, A., {Frigo}, A., {et~al.} 2014, \aj, 148, 81
+
+\end{thebibliography}
