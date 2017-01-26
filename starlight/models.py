@@ -192,12 +192,12 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
 
     def log_posterior(self, bins, distances, binamps):
         return lnprob_marg_varpisnrcut(self.nobj, self.nbins, self.ncols,
-                           self.varpi, self.varpi_err,
-                           self.obsmags, self.obsmags_err,
-                           self.obscolors, self.obscolors_err,
-                           bins, distances, binamps,
-                           self.binmus, self.binsigs,
-                           self.varpisnr_lo, self.varpisnr_hi)
+                                       self.varpi, self.varpi_err,
+                                       self.obsmags, self.obsmags_err,
+                                       self.obscolors, self.obscolors_err,
+                                       bins, distances, binamps,
+                                       self.binmus, self.binsigs,
+                                       self.varpisnr_lo, self.varpisnr_hi)
 
     def log_posterior_gradients(self, x):
         raise NotImplemented()
@@ -348,20 +348,22 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
                 self.binmus, self.binsigs, self.varpisnr_lo, self.varpisnr_hi)
             v = v - 0.5 * step_size * distgrads
 
-            lnprob = lnprob_marg_varpisnrcut(self.nobj, self.nbins, self.ncols,
-                                 self.varpi, self.varpi_err,
-                                 self.obsmags, self.obsmags_err,
-                                 self.obscolors, self.obscolors_err,
-                                 self.bins, distances, self.binamps,
-                                 self.binmus, self.binsigs,
-                                 self.varpisnr_lo, self.varpisnr_hi)
-            lnprob0 = lnprob_marg_varpisnrcut(self.nobj, self.nbins, self.ncols,
-                                  self.varpi, self.varpi_err,
-                                  self.obsmags, self.obsmags_err,
-                                  self.obscolors, self.obscolors_err,
-                                  self.bins, distances0, self.binamps,
-                                  self.binmus, self.binsigs,
-                                  self.varpisnr_lo, self.varpisnr_hi)
+            lnprob = lnprob_marg_varpisnrcut(
+                self.nobj, self.nbins, self.ncols,
+                self.varpi, self.varpi_err,
+                self.obsmags, self.obsmags_err,
+                self.obscolors, self.obscolors_err,
+                self.bins, distances, self.binamps,
+                self.binmus, self.binsigs,
+                self.varpisnr_lo, self.varpisnr_hi)
+            lnprob0 = lnprob_marg_varpisnrcut(
+                self.nobj, self.nbins, self.ncols,
+                self.varpi, self.varpi_err,
+                self.obsmags, self.obsmags_err,
+                self.obscolors, self.obscolors_err,
+                self.bins, distances0, self.binamps,
+                self.binmus, self.binsigs,
+                self.varpisnr_lo, self.varpisnr_hi)
             orig = lnprob0 + 0.5 * np.dot(v0.T, v0)
             current = lnprob + 0.5 * np.dot(v.T, v)
             if np.isfinite(orig) and np.isfinite(current):
