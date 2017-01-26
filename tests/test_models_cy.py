@@ -1,6 +1,7 @@
 
 import numpy as np
 from scipy.misc import derivative
+from scipy.special import erf
 import pytest
 
 from starlight.models_cy import *
@@ -461,3 +462,100 @@ def test_SimpleHDRModel_marg_grid():
                                rtol=relative_accuracy)
 
 #  test_SimpleHDRModel_marg_grid()
+
+
+def snrcut_fac(snr_lo, snr_hi, dis, sig):
+    return 0.5 * (erf((1./dis - sig*snr_lo) / np.sqrt(2) / sig) -
+                  erf((1./dis - sig*snr_hi) / np.sqrt(2) / sig))
+
+
+def mylnprob_and_grads_marg_varpisnrcut(
+    nobj, nbins, ncols,
+    varpi, varpi_err,  # nobj
+    obsmags, obsmags_err,  # nobj
+    obscolors, obscolors_err,  # nobj, ncols
+    bins,  # nobj
+    distances,  # nobj
+    binamps,  # nbins
+    binmus,  # nbins, ncols + 1
+    binsigs,  # nbins, ncols + 1
+    snr_lo, snr_hi
+        ):
+
+    lnprobval, distances_grad = mylnprob_and_grads_marg(
+        nobj, nbins, ncols, varpi, varpi_err,
+        obsmags, obsmags_err, obscolors, obscolors_err,
+        bins, distances, binamps, binmus,  binsigs)
+    lnprobval += np.sum(np.log(
+        snrcut_fac(snr_lo, snr_hi, distances, varpi_err)))
+    distances_grad += (gaussian(1/distances, snr_hi*varpi_err, varpi_err) -
+                       gaussian(1/distances, snr_lo*varpi_err, varpi_err)) /\
+        snrcut_fac(snr_lo, snr_hi, distances, varpi_err) / distances**2
+
+    return lnprobval, distances_grad
+
+
+def test_SimpleHDRModel_marg_varpisnrcut_gradients():
+
+    for k in range(NREPEAT):
+
+        nbins = np.random.randint(4, 100)
+        nobj = np.random.randint(10, 100)
+        ncols = np.random.randint(1, 3)
+
+        absmags = np.random.uniform(1, 2, nobj)
+        distances = np.random.uniform(0.1, 0.3, nobj)
+        varpi = 1/distances
+        varpi_err = varpi*0.1
+        varpi += varpi_err*np.random.randn(*varpi.shape)
+        colors = np.random.uniform(1, 2, nobj*ncols).reshape((nobj, ncols))
+        binamps = np.random.uniform(0, 1, nbins)
+        binmus = np.random.uniform(1, 2, nbins*(ncols+1))\
+            .reshape((nbins, ncols+1))
+        bins = np.random.randint(low=0, high=nbins-1, size=nobj)
+        binsigs = np.repeat(0.5, nbins*(ncols+1)).reshape((nbins, ncols+1))
+        obsmags = absmags + 5*np.log10(distances) + 10
+        obsmags_err = obsmags*0.1
+        obsmags += obsmags_err * np.random.randn(*obsmags.shape)
+        obscolors = 1*colors
+        obscolors_err = obscolors*0.1
+        obscolors += obscolors_err*np.random.randn(*colors.shape)
+        snr_lo, snr_hi = 1., 10.
+
+        lnprobval2, distances_grad2 =\
+            mylnprob_and_grads_marg_varpisnrcut(
+                nobj, nbins, ncols, varpi, varpi_err,
+                obsmags, obsmags_err, obscolors, obscolors_err,
+                bins, distances, binamps, binmus, binsigs, snr_lo, snr_hi)
+
+        assert distances_grad2.size == nobj
+
+        lnprobval1 = lnprob_marg_varpisnrcut(
+            nobj, nbins, ncols, varpi, varpi_err,
+            obsmags, obsmags_err, obscolors, obscolors_err,
+            bins, distances, binamps, binmus, binsigs, snr_lo, snr_hi)
+
+        assert (np.abs(lnprobval2/lnprobval1) - 1) < relative_accuracy
+
+        distances_grad1 = 0*distances_grad2
+        lnprob_distgradient_marg_varpisnrcut(
+            distances_grad1,
+            nobj, nbins, ncols, varpi, varpi_err,
+            obsmags, obsmags_err, obscolors, obscolors_err,
+            bins, distances, binamps, binmus, binsigs, snr_lo, snr_hi)
+        np.testing.assert_allclose(distances_grad1, distances_grad2,
+                                   rtol=relative_accuracy)
+        for i in range(nobj):
+            def f(d):
+                distances2 = 1*distances
+                distances2[i] = d
+                lnprobval3, _ = mylnprob_and_grads_marg_varpisnrcut(
+                    nobj, nbins, ncols, varpi, varpi_err,
+                    obsmags, obsmags_err, obscolors, obscolors_err,
+                    bins, distances2, binamps, binmus, binsigs, snr_lo, snr_hi)
+                return lnprobval3
+
+            distances_grad3 = derivative(f, 1*distances[i],
+                                         dx=0.001*distances[i], order=5)
+            assert abs(distances_grad3/distances_grad2[i] - 1) \
+                < relative_accuracy

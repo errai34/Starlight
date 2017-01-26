@@ -2,6 +2,7 @@
 Data-driven, hierarchical models of Milky Way stars
 Fluxes, colors, parallaxes, and population/hierarchical parameters
 
+![alt tag](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)
 [![Build Status](https://travis-ci.org/ixkael/Starlight.svg?branch=master)](https://travis-ci.org/ixkael/Starlight)
 [![Coverage Status](https://coveralls.io/repos/github/ixkael/Starlight/badge.svg?branch=master)](https://coveralls.io/github/ixkael/Starlight?branch=master)
 [![Latest PDF](https://img.shields.io/badge/PDF-latest-orange.svg)](https://github.com/ixkael/Starlight/blob/master/paper/shrinkingparallaxes.pdf)

@@ -2,7 +2,8 @@
 import numpy as np
 from scipy.optimize import minimize
 
-from starlight.models_cy import *
+from starlight.models_cy import lnprob_distgradient_marg_varpisnrcut,\
+    lnprob_marg_varpisnrcut, sample_bins_marg_varpisnrcut
 
 
 class SimpleGaussianModel:
@@ -155,12 +156,15 @@ class SimpleHRDModel_nomarg:
 class SimpleHRDModel(SimpleHRDModel_nomarg):
 
     def set_data(self, binmus, binsigs, varpi, varpi_err,
-                 obsmags, obsmags_err, obscolors, obscolors_err):
+                 obsmags, obsmags_err, obscolors, obscolors_err,
+                 varpisnr_lo, varpisnr_hi):
 
         super(SimpleHRDModel, self).set_data(binmus, binsigs,
                                              varpi, varpi_err,
                                              obsmags, obsmags_err,
                                              obscolors, obscolors_err)
+        self.varpisnr_lo, self.varpisnr_hi = varpisnr_lo, varpisnr_hi
+
         self.splits = [self.nobj]
         self.ibins = None
         self.probgrid_magsonly = None
@@ -187,12 +191,13 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
         return np.concatenate([distances, binamps])
 
     def log_posterior(self, bins, distances, binamps):
-        return lnprob_marg(self.nobj, self.nbins, self.ncols,
+        return lnprob_marg_varpisnrcut(self.nobj, self.nbins, self.ncols,
                            self.varpi, self.varpi_err,
                            self.obsmags, self.obsmags_err,
                            self.obscolors, self.obscolors_err,
                            bins, distances, binamps,
-                           self.binmus, self.binsigs)
+                           self.binmus, self.binsigs,
+                           self.varpisnr_lo, self.varpisnr_hi)
 
     def log_posterior_gradients(self, x):
         raise NotImplemented()
@@ -209,12 +214,14 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
             prob_bingrid_magsonly_marg(
                 self.probgrid_magsonly, self.nobj, self.nbins, self.ncols,
                 self.varpi, self.varpi_err, self.obsmags, self.obscolors,
-                self.distances, self.binamps, self.binmus, self.allbinsigs)
+                self.distances, self.binamps, self.binmus, self.allbinsigs,
+                self.varpisnr_lo, self.varpisnr_hi)
         probgrid = 1*self.probgrid_magsonly
         prob_bingrid_distandbins_marg(
             probgrid, self.nobj, self.nbins, self.ncols,
             self.varpi, self.varpi_err, self.obsmags, self.obscolors,
-            self.distances, self.binamps, self.binmus, self.allbinsigs)
+            self.distances, self.binamps, self.binmus, self.allbinsigs,
+            self.varpisnr_lo, self.varpisnr_hi)
         cumsumweights = np.add.accumulate(probgrid, axis=1).T
         cumsumweights /= cumsumweights[-1, :]
         pos = np.random.uniform(0.0, 1.0, size=self.nobj)
@@ -250,12 +257,13 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
             v0 = np.random.randn(distances0.size)
 
             distgrads = np.zeros((self.nobj, ))
-            lnprob_distgradient_marg(
+            lnprob_distgradient_marg_varpisnrcut(
                 distgrads, self.nobj, self.nbins, self.ncols,
                 self.varpi, self.varpi_err, self.obsmags, self.obsmags_err,
                 self.obscolors, self.obscolors_err,
                 self.bins, distances0, self.binamps,
-                self.binmus, self.binsigs)
+                self.binmus, self.binsigs,
+                self.varpisnr_lo, self.varpisnr_hi)
 
             for j in range(12):
                 v = v0 - 0.5 * step_size * distgrads
@@ -297,12 +305,13 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
             for i in range(num_steps):
 
                 distgrads0 = 1*distgrads
-                lnprob_distgradient_marg(
+                lnprob_distgradient_marg_varpisnrcut(
                     distgrads, self.nobj, self.nbins, self.ncols,
                     self.varpi, self.varpi_err, self.obsmags, self.obsmags_err,
                     self.obscolors, self.obscolors_err,
                     self.bins, distances, self.binamps,
-                    self.binmus, self.binsigs)
+                    self.binmus, self.binsigs,
+                    self.varpisnr_lo, self.varpisnr_hi)
 
                 for j in range(12):
                     newv = v - step_size * distgrads
@@ -331,26 +340,28 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
                 distances = newdistances
                 v = newv
 
-            lnprob_distgradient_marg(
+            lnprob_distgradient_marg_varpisnrcut(
                 distgrads, self.nobj, self.nbins, self.ncols,
                 self.varpi, self.varpi_err, self.obsmags, self.obsmags_err,
                 self.obscolors, self.obscolors_err,
                 self.bins, distances, self.binamps,
-                self.binmus, self.binsigs)
+                self.binmus, self.binsigs, self.varpisnr_lo, self.varpisnr_hi)
             v = v - 0.5 * step_size * distgrads
 
-            lnprob = lnprob_marg(self.nobj, self.nbins, self.ncols,
+            lnprob = lnprob_marg_varpisnrcut(self.nobj, self.nbins, self.ncols,
                                  self.varpi, self.varpi_err,
                                  self.obsmags, self.obsmags_err,
                                  self.obscolors, self.obscolors_err,
                                  self.bins, distances, self.binamps,
-                                 self.binmus, self.binsigs)
-            lnprob0 = lnprob_marg(self.nobj, self.nbins, self.ncols,
+                                 self.binmus, self.binsigs,
+                                 self.varpisnr_lo, self.varpisnr_hi)
+            lnprob0 = lnprob_marg_varpisnrcut(self.nobj, self.nbins, self.ncols,
                                   self.varpi, self.varpi_err,
                                   self.obsmags, self.obsmags_err,
                                   self.obscolors, self.obscolors_err,
                                   self.bins, distances0, self.binamps,
-                                  self.binmus, self.binsigs)
+                                  self.binmus, self.binsigs,
+                                  self.varpisnr_lo, self.varpisnr_hi)
             orig = lnprob0 + 0.5 * np.dot(v0.T, v0)
             current = lnprob + 0.5 * np.dot(v.T, v)
             if np.isfinite(orig) and np.isfinite(current):
@@ -386,11 +397,12 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
             self.bins = np.zeros((self.nobj, ), dtype=int)
             self.nearestbins = np.zeros((self.nobj, ), dtype=int)
             self.counts = np.zeros((self.nobj, ), dtype=int)
-            sample_bins_marg(
+            sample_bins_marg_varpisnrcut(
                 self.bins, self.nearestbins, self.counts,
                 self.nobj, self.nbins, self.ncols,
                 self.varpi, self.varpi_err, self.obsmags, self.obscolors,
-                self.distances, self.binamps, self.binmus, self.allbinsigs)
+                self.distances, self.binamps, self.binmus, self.allbinsigs,
+                self.varpisnr_lo, self.varpisnr_hi)
             self.mcmcdraw_binamps()
 
         # distgrads = np.zeros((self.nobj, ))
@@ -416,11 +428,12 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
         for i in range(num_samples):
             t1 = time()
             # bins_samples[i, :] = self.mcmcdraw_bins()
-            sample_bins_marg(
+            sample_bins_marg_varpisnrcut(
                 self.bins, self.nearestbins, self.counts,
                 self.nobj, self.nbins, self.ncols,
                 self.varpi, self.varpi_err, self.obsmags, self.obscolors,
-                self.distances, self.binamps, self.binmus, self.allbinsigs)
+                self.distances, self.binamps, self.binmus, self.allbinsigs,
+                self.varpisnr_lo, self.varpisnr_hi)
             bins_samples[i, :] = self.bins
             t2 = time()
             distances_samples[i, :] = self.mcmcdraw_distances(

@@ -204,6 +204,7 @@ def prob_distgrid_marg(
             for j in range(nbinsdist):
                 probgrid[o, j] += probgridterm * gauss_prob(1/distances_grid[j], varpi[o], varpi_err[o]) * gauss_prob(5*log10(distances_grid[j]) + 10, obsmags[o] - binmus[b, 0], sig)
 
+
 def prob_bingrid_distandbins_marg(
     double[:, :] probgrid,  # nobj, nbins
     long nobj, long nbins, long ncols,
@@ -358,3 +359,163 @@ def lnprob_distgradient_marg(
         distances_grad[o] +=\
             (5*log10(distances[o]) + 10 - obsmags[o] + binmus[b, 0])\
             * 5 / (sig*sig*distances[o]*log(10.))
+
+
+cdef double snrcut_fac(double snr_lo, double snr_hi, double d, double sig) nogil:
+    return 0.5 * (\
+                    erf((1/d - sig*snr_lo) / sqrt(2) / sig) -\
+                    erf((1/d - sig*snr_hi) / sqrt(2) / sig)
+                    )
+
+
+def lnprob_distgradient_marg_varpisnrcut(
+    double[:] distances_grad,  # nobj
+    long nobj, long nbins, long ncols,
+    double[:] varpi,  # nobj
+    double[:] varpi_err,  # nobj
+    double[:] obsmags,  # nobj
+    double[:] obsmags_err,  # nobj
+    double[:, :] obscolors,  # nobj, ncols
+    double[:, :] obscolors_err,  # nobj, ncols
+    long[:] bins,  # nobj
+    double[:] distances,  # nobj
+    double[:] binamps,  # nbins
+    double[:, :] binmus,  # nbins, ncols + 1
+    double[:, :] binsigs,  # nbins, ncols + 1
+    double varpisnr_lo,
+    double varpisnr_hi
+    ):
+    cdef double sig
+    cdef long b, o
+    for o in prange(nobj, nogil=True):
+        distances_grad[o] = gaussdistvarpi_lnprob_grad_dist(distances[o], varpi[o], varpi_err[o])
+        distances_grad[o] += \
+            ( gauss_prob(1/distances[o], varpisnr_hi*varpi_err[o], varpi_err[o]) -\
+              gauss_prob(1/distances[o], varpisnr_lo*varpi_err[o], varpi_err[o])
+            ) / snrcut_fac(varpisnr_lo, varpisnr_hi, distances[o], varpi_err[o]) / pow(distances[o], 2)
+        b = bins[o]
+        sig = sqrt(pow(obsmags_err[o], 2) + pow(binsigs[b, 0], 2))
+        distances_grad[o] +=\
+            (5*log10(distances[o]) + 10 - obsmags[o] + binmus[b, 0])\
+            * 5 / (sig*sig*distances[o]*log(10.))
+
+
+def sample_bins_marg_varpisnrcut(
+    long[:] bins,  # nobj
+    long[:] nearestbins,  # nobj
+    long[:] counts,  # nobj
+    long nobj, long nbins, long ncols,
+    double[:] varpi,  # nobj
+    double[:] varpi_err,  # nobj
+    double[:] obsmags,  # nobj
+    double[:, :] obscolors,  # nobj, ncols
+    double[:] distances,  # nobj
+    double[:] binamps,  # nbins
+    double[:, :] binmus,  # nbins, ncols + 1
+    double[:, :, :] sigmas,  # nobj, nbins, ncols + 1
+    double varpisnr_lo,
+    double varpisnr_hi
+    ):
+    cdef double sig, baseval, prob, x, disttobin, mindisttobin
+    cdef long b, j, o, count, nearestbin
+    cdef double *cumpdf
+    cdef long *ibins
+    cdef gsl_rng *r = gsl_rng_alloc(gsl_rng_mt19937)
+
+    for o in prange(nobj, nogil=True):
+        cumpdf = <double *> malloc(sizeof(double) * (nbins+1))
+        ibins = <long *> malloc(sizeof(long) * (nbins))
+        if ibins == NULL or cumpdf == NULL:
+            abort()
+        baseval = gauss_prob(1/distances[o], varpi[o], varpi_err[o]) /\
+            snrcut_fac(varpisnr_lo, varpisnr_hi, distances[o], varpi_err[o])
+        count = 0
+        mindisttobin = 1e160
+        for b in range(nbins):
+            disttobin = (obsmags[o] - 5*log10(distances[o]) - 10 - binmus[b, 0])**2
+            prob = 1*baseval
+            prob = prob * binamps[b] * gauss_prob(5*log10(distances[o]) + 10, obsmags[o] - binmus[b, 0], sigmas[o, b, 0])
+            for j in range(ncols):
+                prob = prob * gauss_prob(obscolors[o, j], binmus[b, j+1], sigmas[o, b, j+1])
+                disttobin = disttobin + (obscolors[o, j] - binmus[b, j+1])**2
+            if disttobin < mindisttobin:
+                mindisttobin = disttobin
+                nearestbin = b
+            if prob > 1e-12:
+                count = count + 1
+                ibins[count-1] = b
+                cumpdf[count] = cumpdf[count-1] + prob
+        nearestbins[o] = nearestbin
+        if count == 0:
+            bins[o] = nearestbin
+        if count == 1:
+            bins[o] = ibins[count-1]
+        if count > 1:
+            x = uniform(r, 0, cumpdf[count])
+            for b in range(1, count):
+                if x < cumpdf[b] and x >= cumpdf[b-1]:
+                    bins[o] = ibins[b-1]
+        counts[o] = count
+        free(cumpdf)
+        free(ibins)
+
+
+def lnprob_marg_varpisnrcut(
+    long nobj, long nbins, long ncols,
+    double[:] varpi,  # nobj
+    double[:] varpi_err,  # nobj
+    double[:] obsmags,  # nobj
+    double[:] obsmags_err,  # nobj
+    double[:, :] obscolors,  # nobj, ncols
+    double[:, :] obscolors_err,  # nobj, ncols
+    long[:] bins,  # nobj
+    double[:] distances,  # nobj
+    double[:] binamps,  # nbins
+    double[:, :] binmus,  # nbins, ncols + 1
+    double[:, :] binsigs,  # nbins, ncols + 1
+    double varpisnr_lo,
+    double varpisnr_hi
+    ):
+    cdef double valtot = 0, sig
+    cdef long b, j, o
+    for o in prange(nobj, nogil=True):
+        b = bins[o]
+        valtot += - log(binamps[b])
+        valtot += gaussdistvarpi_lnprob(distances[o], varpi[o], varpi_err[o])
+        valtot += log(snrcut_fac(varpisnr_lo, varpisnr_hi, distances[o], varpi_err[o]))
+        sig = sqrt(pow(obsmags_err[o], 2) + pow(binsigs[b, 0], 2))
+        valtot += gauss_lnprob(5.*log10(distances[o]) + 10.,
+                               obsmags[o] - binmus[b, 0], sig)
+        for j in range(ncols):
+            sig = sqrt(pow(obscolors_err[o, j], 2) + pow(binsigs[b, j+1], 2))
+            valtot += gauss_lnprob(obscolors[o, j], binmus[b, j+1], sig)
+    return valtot
+
+
+def prob_distgrid_marg_varpisnrcut(
+    double[:, :] probgrid,  # nobj, nbins
+    long nbinsdist, double[:] distances_grid,  # nobj
+    long nobj, long nbins, long ncols,
+    double[:] varpi,  # nobj
+    double[:] varpi_err,  # nobj
+    double[:] obsmags,  # nobj
+    double[:] obsmags_err,  # nobj
+    double[:, :] obscolors,  # nobj, ncols
+    double[:, :] obscolors_err,  # nobj, ncols
+    double[:] binamps,  # nbins
+    double[:, :] binmus,  # nbins, ncols + 1
+    double[:, :] binsigs,  # nbins, ncols + 1
+    double varpisnr_lo,
+    double varpisnr_hi
+    ):
+    cdef double valtot = 0, sig, probgridterm
+    cdef long b, j, o
+    for o in prange(nobj, nogil=True):
+        for b in range(nbins):
+            probgridterm = binamps[b]
+            for j in range(ncols):
+                sig = sqrt(pow(obscolors_err[o, j], 2) + pow(binsigs[b, j+1], 2))
+                probgridterm *= gauss_prob(obscolors[o, j], binmus[b, j+1], sig)
+            sig = sqrt(pow(obsmags_err[o], 2) + pow(binsigs[b, 0], 2))
+            for j in range(nbinsdist):
+                probgrid[o, j] += probgridterm * gauss_prob(1/distances_grid[j], varpi[o], varpi_err[o]) * gauss_prob(5*log10(distances_grid[j]) + 10, obsmags[o] - binmus[b, 0], sig) / snrcut_fac(varpisnr_lo, varpisnr_hi, distances_grid[j], varpi_err[o])
