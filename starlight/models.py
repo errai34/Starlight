@@ -257,7 +257,8 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
         accept = False
         naivedist = 1/self.varpi
         naivedist_err = self.varpi_err / self.varpi**2
-        inv_mass_matrix_diag = 1./self.dist_bin_hessian(1/self.varpi, self.bins)
+        inv_mass_matrix_diag = 1./self.dist_bin_hessian(1/self.varpi,
+                                                        self.bins)
 
         if inv_mass_matrix_diag is None:
             inv_mass_matrix_diag_sqrt = np.repeat(1, self.nobj)

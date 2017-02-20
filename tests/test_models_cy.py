@@ -410,10 +410,11 @@ def myprob_bingrid_fullmarg(
     dist_err = varpi_err / varpi**2
     probgrid = np.zeros((nobj, nbins))
     for b in range(nbins):
-        sig = np.sqrt( binsigs[b, 0]**2 + obsmags_err[:]**2)
+        sig = np.sqrt(binsigs[b, 0]**2 + obsmags_err[:]**2)
         mud = 10**(-0.2*(binmus[b, 0] - obsmags[:] + 10))
         hes = (5/np.log(10))**2 / mud**2 / sig**2
-        hes -= (5*np.log10(mud) - obsmags[:] + binmus[b, 0] + 10) / sig**2 * (5/np.log(10)) / mud**2
+        hes -= (5*np.log10(mud) - obsmags[:] + binmus[b, 0] + 10) / sig**2 *\
+            (5/np.log(10)) / mud**2
         dist_errs = varpi/varpi_err**2
         M1 = mud
         S1 = hes**-0.5
@@ -428,7 +429,8 @@ def myprob_bingrid_fullmarg(
             d_grid = np.linspace(d_min, d_max, numpts)
 
             v_grid = gaussian(1/d_grid, varpi[o], varpi_err[o])
-            v_grid *= gaussian(5*np.log10(d_grid) + 10, obsmags[o] - binmus[b, 0], sig[o])
+            v_grid *= gaussian(5*np.log10(d_grid) + 10,
+                               obsmags[o] - binmus[b, 0], sig[o])
             for i in range(ncols):
                 tsig = np.sqrt(binsigs[b, i+1]**2 + obscolors_err[o, i]**2)
                 v_grid *= gaussian(obscolors[o, i], binmus[b, i+1], tsig)
