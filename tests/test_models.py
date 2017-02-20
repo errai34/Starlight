@@ -136,12 +136,9 @@ def test_SimpleHDRModel_gradients():
                             varpi_fracerror, mags_fracerror)
 
         snr = varpi / varpi_err
-        varpisnr_lo, varpisnr_hi =\
-            np.percentile(snr, 5), np.percentile(snr, 95)
 
         model.set_data(binmus, binsigs, varpi, varpi_err,
-                       obsmags, obsmags_err, obscolors, obscolors_err,
-                       varpisnr_lo, varpisnr_hi)
+                       obsmags, obsmags_err, obscolors, obscolors_err)
 
-        distances_samples, bins_samples, binamps_samples =\
-            model.gibbs_sampler(1, num_steps=10)
+        bins_samples, binamps_samples =\
+            model.gibbs_sampler(2, num_steps=10)

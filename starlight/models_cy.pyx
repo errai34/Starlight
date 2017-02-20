@@ -205,6 +205,33 @@ def prob_distgrid_marg(
                 probgrid[o, j] += probgridterm * gauss_prob(1/distances_grid[j], varpi[o], varpi_err[o]) * gauss_prob(5*log10(distances_grid[j]) + 10, obsmags[o] - binmus[b, 0], sig)
 
 
+def prob_distgrids_marg(
+    double[:, :] probgrid,  # nobj, nbins
+    long nbinsdist, double[:, :] distance_grids,  # nobj, nbinsdist
+    long nobj, long nbins, long ncols,
+    double[:] varpi,  # nobj
+    double[:] varpi_err,  # nobj
+    double[:] obsmags,  # nobj
+    double[:] obsmags_err,  # nobj
+    double[:, :] obscolors,  # nobj, ncols
+    double[:, :] obscolors_err,  # nobj, ncols
+    double[:] binamps,  # nbins
+    double[:, :] binmus,  # nbins, ncols + 1
+    double[:, :] binsigs  # nbins, ncols + 1
+    ):
+    cdef double valtot = 0, sig, probgridterm
+    cdef long b, j, o
+    for o in prange(nobj, nogil=True):
+        for b in range(nbins):
+            probgridterm = binamps[b]
+            for j in range(ncols):
+                sig = sqrt(pow(obscolors_err[o, j], 2) + pow(binsigs[b, j+1], 2))
+                probgridterm *= gauss_prob(obscolors[o, j], binmus[b, j+1], sig)
+            sig = sqrt(pow(obsmags_err[o], 2) + pow(binsigs[b, 0], 2))
+            for j in range(nbinsdist):
+                probgrid[o, j] += probgridterm * gauss_prob(1/distance_grids[o, j], varpi[o], varpi_err[o]) * gauss_prob(5*log10(distance_grids[o, j]) + 10, obsmags[o] - binmus[b, 0], sig)
+
+
 def prob_bingrid_distandbins_marg(
     double[:, :] probgrid,  # nobj, nbins
     long nobj, long nbins, long ncols,
@@ -519,3 +546,64 @@ def prob_distgrid_marg_varpisnrcut(
             sig = sqrt(pow(obsmags_err[o], 2) + pow(binsigs[b, 0], 2))
             for j in range(nbinsdist):
                 probgrid[o, j] += probgridterm * gauss_prob(1/distances_grid[j], varpi[o], varpi_err[o]) * gauss_prob(5*log10(distances_grid[j]) + 10, obsmags[o] - binmus[b, 0], sig) / snrcut_fac(varpisnr_lo, varpisnr_hi, distances_grid[j], varpi_err[o])
+
+
+def prob_bingrid_fullmarg(
+    double[:, :] probgrid,  # nobj, nbins
+    double dist_min, double dist_max,
+    long nobj, long nbins, long ncols,
+    double[:] varpi,  # nobj
+    double[:] varpi_err,  # nobj
+    double[:] obsmags,  # nobj
+    double[:] obsmags_err,  # nobj
+    double[:, :] obscolors,  # nobj, ncols
+    double[:, :] obscolors_err,  # nobj, ncols
+    double[:, :] binmus,  # nbins, ncols + 1
+    double[:, :] binsigs
+    ):
+    cdef long numpts = 100
+    cdef long fac = 4
+    cdef double valtot = 0, sig, probgridterm
+    cdef double delta_d, mud, sigd, hes, d_min, d_max, d_val
+    cdef long b, j, o
+    for o in prange(nobj, nogil=True):
+        for b in range(nbins):
+            probgridterm = 1.0
+            for j in range(ncols):
+                sig = sqrt(pow(obscolors_err[o, j], 2) + pow(binsigs[b, j+1], 2))
+                probgridterm *= gauss_prob(obscolors[o, j], binmus[b, j+1], sig)
+            sig = sqrt(pow(obsmags_err[o], 2) + pow(binsigs[b, 0], 2))
+            mud = pow(10, -0.2*(binmus[b, 0] - obsmags[o] + 10))
+            hes = pow(5/log(10)/mud/sig, 2) - (5*log10(mud) - obsmags[o] + binmus[b, 0] + 10) / pow(sig*mud, 2) * (5/log(10))
+            sigd = pow(hes, -0.5)
+            if (mud - 1/varpi[o]) < varpi_err[o]/pow(varpi[o], 2) + fac*sigd:
+                d_min = max(dist_min, mud - fac*sigd)
+                d_max = min(dist_max, mud + fac*sigd)
+                delta_d = (d_max - d_min) / float(numpts-1)
+                for j in range(numpts):
+                    d_val = d_min + j * delta_d
+                    probgrid[o, b] += probgridterm * delta_d * gauss_prob(1/d_val, varpi[o], varpi_err[o]) * gauss_prob(5*log10(d_val) + 10, obsmags[o] - binmus[b, 0], sig)
+
+
+def sample_bins_from_grid(
+    long[:] bins,  # nobj
+    double[:, :] probgrid,  # nobj, nbins
+    double[:] binamps, # nbins
+    long nobj, long nbins
+    ):
+    cdef double sig, x
+    cdef long b, j, o
+    cdef double *cumpdf
+    cdef gsl_rng *r = gsl_rng_alloc(gsl_rng_mt19937)
+
+    for o in prange(nobj, nogil=True):
+        cumpdf = <double *> malloc(sizeof(double) * (nbins+1))
+        if cumpdf == NULL:
+            abort()
+        for b in range(nbins):
+            cumpdf[b+1] = cumpdf[b] + probgrid[o, b] * binamps[b]
+        x = uniform(r, 0, cumpdf[nbins])
+        for b in range(1, nbins + 1):
+            if x < cumpdf[b] and x >= cumpdf[b-1]:
+                bins[o] = b - 1
+        free(cumpdf)

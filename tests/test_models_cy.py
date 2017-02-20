@@ -395,16 +395,56 @@ def test_SimpleHDRModel_marg_gradients():
                                    rtol=relative_accuracy)
 
 
+def myprob_bingrid_fullmarg(
+    dist_min, dist_max,
+    nobj, nbins, ncols,
+    varpi, varpi_err,  # nobj
+    obsmags, obsmags_err,  # nobj
+    obscolors, obscolors_err,  # nobj, ncols
+    binmus,  # nbins, ncols + 1
+    binsigs  # nbins, ncols + 1
+        ):
+
+    fac = 8
+    numpts = 2000
+    dist_err = varpi_err / varpi**2
+    probgrid = np.zeros((nobj, nbins))
+    for b in range(nbins):
+        sig = np.sqrt( binsigs[b, 0]**2 + obsmags_err[:]**2 )
+        mud = 10**(-0.2*(binmus[b, 0] - obsmags[:] + 10))
+        hes = (5/np.log(10))**2 / mud**2 / sig**2
+        hes -= (5*np.log10(mud) - obsmags[:] + binmus[b, 0] + 10) / sig**2 * (5/np.log(10)) / mud**2
+        sigd = hes**-0.5
+
+        for o in range(nobj):
+            d_min = np.max([dist_min, mud[o]-fac*sigd[o]])
+            d_max = np.min([dist_max, mud[o]+fac*sigd[o]])
+            d_grid = np.linspace(d_min, d_max, numpts)
+
+            v_grid = gaussian(1/d_grid, varpi[o], varpi_err[o])
+            v_grid *= gaussian(5*np.log10(d_grid) + 10, obsmags[o] - binmus[b, 0], sig[o])
+            for i in range(ncols):
+                tsig = np.sqrt(binsigs[b, i+1]**2 + obscolors_err[o, i]**2)
+                v_grid *= gaussian(obscolors[o, i], binmus[b, i+1], tsig)
+
+            probgrid[o, b] = np.trapz(v_grid, x=d_grid)
+
+    probgrid /= np.sum(probgrid, axis=1)[:, None]
+    return probgrid
+
+
 def test_SimpleHDRModel_marg_grid():
 
     nbins = 100
-    nobj = 1000
+    nobj = 100
     ncols = 1
 
     absmags = np.random.uniform(1, 2, nobj)
-    distances = np.random.uniform(0.1, 0.3, nobj)
+    dist_max = 2
+    dist_min = 0.1
+    distances = np.random.uniform(dist_min, dist_max, nobj)
     varpi = 1/distances
-    varpi_err = varpi*0.1
+    varpi_err = varpi*0.01
     varpi += varpi_err*np.random.randn(*varpi.shape)
     colors = np.random.uniform(1, 2, nobj*ncols).reshape((nobj, ncols))
     binamps = np.random.uniform(0, 1, nbins)
@@ -461,7 +501,34 @@ def test_SimpleHDRModel_marg_grid():
     np.testing.assert_allclose(probgrid1, probgrid3,
                                rtol=relative_accuracy)
 
-#  test_SimpleHDRModel_marg_grid()
+    t1 = time()
+    probgrid1 = myprob_bingrid_fullmarg(
+        dist_min, dist_max,
+        nobj, nbins, ncols,
+        varpi, varpi_err,
+        obsmags, obsmags_err,
+        obscolors, obscolors_err,
+        binmus, binsigs)
+    t2 = time()
+    probgrid2 = 0*probgrid1
+    prob_bingrid_fullmarg(
+        probgrid2, dist_min, dist_max,
+        nobj, nbins, ncols,
+        varpi, varpi_err,
+        obsmags, obsmags_err,
+        obscolors, obscolors_err,
+        binmus, binsigs)
+    t3 = time()
+    print(t2-t1, t3-t2)
+    print(probgrid1[0, :])
+    print(probgrid2[0, :])
+    np.testing.assert_allclose(probgrid1, probgrid2,
+                               rtol=relative_accuracy)
+
+    bins = np.repeat(0, nobj).astype(int)
+    sample_bins_from_grid(bins, probgrid2, binamps, nobj, nbins)
+
+# test_SimpleHDRModel_marg_grid()
 
 
 def snrcut_fac(snr_lo, snr_hi, dis, sig):
