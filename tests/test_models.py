@@ -121,6 +121,8 @@ def test_SimpleHDRModel_nomarg_gradients():
 
 def test_SimpleHDRModel_gradients():
 
+    dist_max = 2
+    dist_min = 0.1
     for k in range(NREPEAT):
         nbins_perdim = np.random.randint(10, 20)
         ncols = np.random.randint(1, 2)
@@ -138,7 +140,8 @@ def test_SimpleHDRModel_gradients():
         snr = varpi / varpi_err
 
         model.set_data(binmus, binsigs, varpi, varpi_err,
-                       obsmags, obsmags_err, obscolors, obscolors_err)
+                       obsmags, obsmags_err, obscolors, obscolors_err,
+                       dist_min, dist_max)
 
         bins_samples, binamps_samples =\
             model.gibbs_sampler(2, num_steps=10)

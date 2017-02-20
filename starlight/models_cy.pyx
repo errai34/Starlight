@@ -561,28 +561,34 @@ def prob_bingrid_fullmarg(
     double[:, :] binmus,  # nbins, ncols + 1
     double[:, :] binsigs
     ):
-    cdef long numpts = 100
+    cdef long numpts = 400
     cdef long fac = 4
     cdef double valtot = 0, sig, probgridterm
-    cdef double delta_d, mud, sigd, hes, d_min, d_max, d_val
+    cdef double delta_d, mud, sigd, hes, d_min, d_max, d_val, dist_err
+    cdef double M1, M2, S1, S2, mutot
     cdef long b, j, o
     for o in prange(nobj, nogil=True):
+        dist_err = varpi_err[o]/pow(varpi[o], 2)
         for b in range(nbins):
             probgridterm = 1.0
             for j in range(ncols):
                 sig = sqrt(pow(obscolors_err[o, j], 2) + pow(binsigs[b, j+1], 2))
                 probgridterm *= gauss_prob(obscolors[o, j], binmus[b, j+1], sig)
             sig = sqrt(pow(obsmags_err[o], 2) + pow(binsigs[b, 0], 2))
-            mud = pow(10, -0.2*(binmus[b, 0] - obsmags[o] + 10))
+            mud = pow(10, -0.2*(binmus[b, 0] - obsmags[o] + 10)) - 1/varpi[o]
             hes = pow(5/log(10)/mud/sig, 2) - (5*log10(mud) - obsmags[o] + binmus[b, 0] + 10) / pow(sig*mud, 2) * (5/log(10))
-            sigd = pow(hes, -0.5)
-            if (mud - 1/varpi[o]) < varpi_err[o]/pow(varpi[o], 2) + fac*sigd:
-                d_min = max(dist_min, mud - fac*sigd)
-                d_max = min(dist_max, mud + fac*sigd)
-                delta_d = (d_max - d_min) / float(numpts-1)
-                for j in range(numpts):
-                    d_val = d_min + j * delta_d
-                    probgrid[o, b] += probgridterm * delta_d * gauss_prob(1/d_val, varpi[o], varpi_err[o]) * gauss_prob(5*log10(d_val) + 10, obsmags[o] - binmus[b, 0], sig)
+            M1 = mud
+            S1 = pow(hes, -0.5)
+            M2 = 1./varpi[o]
+            S2 = pow(dist_err, 2.)
+            mutot = (M1*S2 + M2*S1) / (S1 + S2)
+            sigd = sqrt(S1*S2 / (S1 + S2))
+            d_min = max(dist_min, mutot - fac*sigd)
+            d_max = min(dist_max, mutot + fac*sigd)
+            delta_d = (d_max - d_min) / float(numpts-1)
+            for j in range(numpts):
+                d_val = d_min + j * delta_d
+                probgrid[o, b] += probgridterm * delta_d * gauss_prob(1/d_val, varpi[o], varpi_err[o]) * gauss_prob(5*log10(d_val) + 10, obsmags[o] - binmus[b, 0], sig)
 
 
 def sample_bins_from_grid(
