@@ -111,7 +111,7 @@ We present a hierarchical probabilistic model for improving parallax-based stell
 This is achieved with a data driven model of the color--magnitude diagram, not relying on stellar models but instead on the  relative abundances of stars in color--magnitude cells, which are inferred from noisy magnitudes and parallaxes using an efficient sampling method.
 This approach is equivalent to deconvolving observational errors into a probabilistic, noiseless color--magnitude diagram, which can be useful for a range of applications. 
 We focus on leveraging color--magnitude information to provide more accurate stellar distance estimates.
-We demonstrate the power of this approach on the Gaia TGAS sample of stars with APASS magnitudes.
+We demonstrate the power of this approach on 1.4 million stars in the Gaia TGAS sample which have APASS magnitudes.
 We find that distance estimates are significantly improved for the noisiest parallaxes and densest regions of the color--magnitude diagram. 
 In particular, the average distance signal-to-noise and uncertainty improve by 26\% and 40\%, respectively, with 12\% of the objects having the latter reduced by a factor of 2.
 We make our improved distance estimates publicly available.
@@ -123,29 +123,28 @@ We make our improved distance estimates publicly available.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Introduction}
 
-3D distribution of stars in the milky way. 
-
-Parallaxes are fundamental observables for the determination of stellar distances.
-However, they are generally difficult to estimate, and restricted to relatively bright stars. 
-In particular, the distance error obtained with parallaxes, under a Gaussian approximation, grows as parallax error over parallax squared.
+Parallaxes are ubiquitous for determining stellar distances.
+However, they are grow noisier for faint, distance stars, which populate most of the Galaxy. 
+In particular, the resulting distance errors, under a Gaussian approximation, are proportional to the parallax error divided by the parallax squared.
 This makes difficult to determine the distances above a few kilo parsecs (kpc). 
 The typical noise of the Gaia DR1 data is
 
 Luckily, stellar distances can also be determined from spectral information.
-In particular, it is well known that stars fall in narrow regions of the color--magnitude space.
-Thus, photometric information (\ie apparent magnitudes) can complement parallax information and prove crucial to determine the distance to stars.
-Yet, theoretical models predict narrow tracks in color--magnitude, and fail to account for all the diversity of real objects.
+In particular, it is well known that the vast majority of stars live in compact regions of the color--magnitude space.
+Thus, photometric information (\ie apparent magnitudes) can complement parallax information and prove crucial to determine distances.
+However, theoretical models predict narrow tracks in color--magnitude (\ie tracks), and fail to account for the diversity of real objects.
 Using those as priors for inferring the distances may bias the estimates.
 In this paper, we present a purely data-driven approach for constructing a color--magnitude diagram and account for this diversity. 
 
-Our approach relies a standard property of hierarchical probabilistic models: a large number of noisy observations (here, noisy parallaxes and magnitudes) can be used to construct an estimate of the underlying distribution (here, a color--magnitude diagram), which in turn shrinks the uncertainties on their individual properties (here, the distances).
-In other words, \textit{the whole is greater than the sum of the parts}: stellar distance estimates can be significantly improved by simultaneously analysing all the available data.
-This effect is particularly relevant since Gaia will soon provide hundreds of millions of sources with parallax, proper motion, and multicolor information.
-This offers the opportunity to construct accurate models of the distribution of magnitudes, colors, dust, and stellar densities in the Galaxy, which will in turn significantly improve our estimates of the intrinsic properties of individual stars.
+Our approach relies a standard property of hierarchical probabilistic models: a large number of noisy observations (here, noisy parallaxes and magnitudes) can be used to construct an estimate of the underlying distribution (a color--magnitude diagram), which in turn shrinks the uncertainties on their individual properties (the distances).
+In other words, \textit{the whole is greater than the sum of the parts}: stellar distance estimates can be improved by simultaneously analysing all the available data.
+This is particularly relevant for Gaia which will soon provide hundreds of millions of sources with parallax, proper motion, and multicolor information.
+This is an opportunity to construct accurate models of the distribution of magnitudes, colors, dust, and stellar densities in the Galaxy, without external data. 
+Those models will in turn significantly improve our estimates of the intrinsic properties of individual stars.
 The core goal of this paper is to demonstrate how one aspect of this hierarchical inference can be done in practice. 
-In particular, we focus on evaluating the shrinkage of distance estimates when constructing a flexible color--magnitude diagram from simultaneously analyzing millions of objects with noisy parallaxes and apparent magnitudes.
+We focus on evaluating the shrinkage of distance estimates obtained by constructing a flexible color--magnitude diagram based on the joint analysis of millions of noisy parallaxes and apparent magnitudes.
 
-We make a number of simplifying assumptions that make our demonstration more transparent, such as adopting uninformative distance priors and point estimates of dust corrections. 
+We make a number of simplifying assumptions to make our demonstration more transparent, such as adopting uninformative distance priors and point estimates of dust corrections. 
 Those assumptions could be relaxed by inferring the 3D distribution of stars and dust jointly with the color--magnitude diagram.
 In fact, they ultimately \emph{should} be relaxed in order to properly infer the full multivariate distribution of stellar colors and distances in the presence of non-trivial structure on the three-dimensional stellar density and dust in our Galaxy.
 
