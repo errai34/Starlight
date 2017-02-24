@@ -1,15 +1,52 @@
 \begin{thebibliography}{}
 \expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
 
+\bibitem[{{Astraatmadja} \&
+  {Bailer-Jones}(2016{\natexlab{a}})}]{Astraatmadja2016}
+{Astraatmadja}, T.~L., \& {Bailer-Jones}, C.~A.~L. 2016{\natexlab{a}}, \apj,
+  832, 137
+
+\bibitem[{{Astraatmadja} \&
+  {Bailer-Jones}(2016{\natexlab{b}})}]{Astraatmadja22016}
+---. 2016{\natexlab{b}}, \apj, 833, 119
+
+\bibitem[{{Bovy} {et~al.}(2011){Bovy}, {Hogg}, \& {Roweis}}]{bovy2011}
+{Bovy}, J., {Hogg}, D.~W., \& {Roweis}, S.~T. 2011, Annals of Applied
+  Statistics, 5, arXiv:0905.2979
+
+\bibitem[{Brooks {et~al.}(2011)Brooks, Gelman, Jones, \&
+  Meng}]{brooks2011handbook}
+Brooks, S., Gelman, A., Jones, G.~L., \& Meng, X.-L. 2011, Handbook of markov
+  chain monte carlo,  Chapman and Hall/CRC
+
+\bibitem[{Casella \& George(1992)}]{Casella1992}
+Casella, G., \& George, E.~I. 1992, The American Statistician, 46, 167
+
+\bibitem[{{Duane} {et~al.}(1987){Duane}, {Kennedy}, {Pendleton}, \&
+  {Roweth}}]{Duane1987}
+{Duane}, S., {Kennedy}, A.~D., {Pendleton}, B.~J., \& {Roweth}, D. 1987,
+  Physics Letters B, 195, 216
+
 \bibitem[{{Gaia Collaboration} {et~al.}(2016){Gaia Collaboration}, {Prusti},
   {de Bruijne}, {Brown}, {Vallenari}, {Babusiaux}, {Bailer-Jones}, {Bastian},
   {Biermann}, {Evans}, \& et~al.}]{gaia}
 {Gaia Collaboration}, {Prusti}, T., {de Bruijne}, J.~H.~J., {et~al.} 2016,
   \aap, 595, A1
 
+\bibitem[{{Green} {et~al.}(2015){Green}, {Schlafly}, {Finkbeiner}, {Rix},
+  {Martin}, {Burgett}, {Draper}, {Flewelling}, {Hodapp}, {Kaiser}, {Kudritzki},
+  {Magnier}, {Metcalfe}, {Price}, {Tonry}, \& {Wainscoat}}]{Green2015bayestar}
+{Green}, G.~M., {Schlafly}, E.~F., {Finkbeiner}, D.~P., {et~al.} 2015, \apj,
+  810, 25
+
 \bibitem[{{Henden} \& {Munari}(2014)}]{hendenmunari2014}
 {Henden}, A., \& {Munari}, U. 2014, Contributions of the Astronomical
   Observatory Skalnate Pleso, 43, 518
+
+\bibitem[{Levin {et~al.}(2009)Levin, Peres, \& Wilmer}]{Levin2009}
+Levin, D.~A., Peres, Y., \& Wilmer, E.~L. 2009, Markov chains and mixing times
+  (Providence, R.I. American Mathematical Society), with a chapter on coupling
+  from the past by James G. Propp and David B. Wilson.
 
 \bibitem[{{Lindegren} {et~al.}(2016){Lindegren}, {Lammers}, {Bastian},
   {Hern{\'a}ndez}, {Klioner}, {Hobbs}, {Bombrun}, {Michalik}, {Ramos-Lerate},
@@ -33,5 +70,17 @@
   {Seabroke}, {Siebert}, {Siviero}, {Smith}, {Steinmetz}, {Templeton},
   {Terrell}, {Welch}, {Williams}, \& {Wyse}}]{munari2014}
 {Munari}, U., {Henden}, A., {Frigo}, A., {et~al.} 2014, \aj, 148, 81
+
+\bibitem[{{Neal}(2012)}]{Neal2012}
+{Neal}, R.~M. 2012, ArXiv e-prints, arXiv:1206.1901
+
+\bibitem[{{Schlegel} {et~al.}(1998){Schlegel}, {Finkbeiner}, \&
+  {Davis}}]{sfd1998}
+{Schlegel}, D.~J., {Finkbeiner}, D.~P., \& {Davis}, M. 1998, \apj, 500, 525
+
+\bibitem[{{Wandelt} {et~al.}(2004){Wandelt}, {Larson}, \&
+  {Lakshminarayanan}}]{Wandelt2004}
+{Wandelt}, B.~D., {Larson}, D.~L., \& {Lakshminarayanan}, A. 2004, \prd, 70,
+  083511
 
 \end{thebibliography}
