@@ -114,7 +114,8 @@ While the latter can be useful for a range of applications, we focus on deriving
 We demonstrate the efficiency of this approach on the 1.4 million stars of the Gaia TGAS sample which have APASS magnitudes.
 Our hierarchical model has 4 million parameters in total, most of which are marginalized out numerically or analytically.
 We find that distance estimates are significantly improved for the noisiest parallaxes and densest regions of the color--magnitude diagram. 
-In particular, the average distance signal-to-noise and uncertainty improve by 26\% and 40\%, respectively, with 10\% of the objects having the latter reduced by a factor of 2. \todo{update those numbers here and in the main text}
+In particular, the average distance signal-to-noise and uncertainty improve by 18\% and 37\%, respectively, with 9\% of the objects having the latter reduced by a factor of 2. 
+This demonstration is a first step towards a hierarchical internal analysis of the Gaia data.
 \end{abstract}
 
 \keywords{Stellar distances, probabilistic hierarchical models.} 
@@ -261,7 +262,7 @@ The sequence $\{ f_{b} \}^{(i)},\{b_s\}^{(i)}$ for $i=1, \cdots, N_\mathrm{sampl
 This allows us to avoid the magnitude--distance degeneracies and exploit other properties of our model, such as conjugate priors.
 We now detail how to draw from the correct conditional distributions.
 
-The first draw is fairly standard: with the bin locations $\{b_s\}$ fixed, the fractional amplitudes $\{ f_{b} \}$ follow a Dirichlet-multinomial distribution (also known as Dirichlet compound multinomial distribution) entirely determined by $\{n_b \}$, with $n_b$ the number of objects in the $b$-th bin.
+The first draw is fairly standard: with the bin locations $\{b_s\}$ fixed, the fractional amplitudes $\{ f_{b} \}$ follow a Dirichlet distribution entirely determined by $\{n_b \}$, with $n_b$ the number of objects in the $b$-th bin.
 All the other parameters enter the constant proportionality factor, so the target conditional distribution is
 \eqn{
 	p\left(\bigl\{ f_b \bigr\} \bigr\rvert \bigl\{ d_s, b_s, \hat{m}_s, \hat{C}_s, \hat{\varpi}_s \bigr\} \right) \ = \ p\bigl( \bigl\{ f_b \bigr\} \bigr\rvert \{n_b \} \bigr) \ \propto\  \prod_b \frac{ f_b^{n_b} }{n_b !},
@@ -272,7 +273,7 @@ Alternatively, one could draw $\gamma_b \sim \mathrm{Gamma}(n_b + 1)$ and take $
 
 The second step of the Gibbs sampler is to draw the bins $\{b_s\}$ given the amplitudes $\{f_b\}$. 
 Those draws can be performed independently (thus, in parallel) over objects.
-However, this may not look simple since we have to marginalize over the distances, and the target conditional distribution to sample is
+This may not look simple since we have to marginalize over the distances, and the target conditional distribution to sample is
 \eqn{
 	p\left(b_s \bigr\rvert \bigl\{ f_b \bigr\}, \hat{m}_s, \hat{C}_s, \hat{\varpi}_s\right) \ &\propto& \  \int p\left(b_s, d_s \bigr\rvert \bigl\{ f_b \bigr\}, \hat{m}_s, \hat{C}_s, \hat{\varpi}_s\right)  \mathrm{d} d_s.
 }  
@@ -281,10 +282,10 @@ However, closer examination reveals that the bins can be simply drawn from a mul
 	p\left(b_s \bigr\rvert \bigl\{ f_b \bigr\}, \hat{m}_s, \hat{C}_s, \hat{\varpi}_s\right) \ &\propto& \ f_{b_s}  g_{b_s}
 } 
 with
-\equ{
-	g_{b_s} = \int \mathcal{N}\bigl( \mu_{b_s,0} + 5\log_{10}d_s  -\hat{m}_s ;\sigma_{\hat{m}_s}^2 + \sigma_{b_s,0}^2 \bigr)   \mathcal{N}\bigl(\hat{C}_s - \mu_{b_s,1};\sigma_{\hat{C}_s}^2 + \sigma_{b_s,1}^2 \bigr) p(d_s)  \mathrm{d}  d_s.
+\eqn{
+	g_{b_s} &=& \int \mathcal{N}\bigl( \mu_{b_s,0} + 5\log_{10}d_s  -\hat{m}_s ;\sigma_{\hat{m}_s}^2 + \sigma_{b_s,0}^2 \bigr)    \\ && \times \ \mathcal{N}\bigl(\hat{C}_s - \mu_{b_s,1};\sigma_{\hat{C}_s}^2 + \sigma_{b_s,1}^2 \bigr) \ \mathcal{N}\bigl(\hat{\varpi}_s - d_s^{-1};\sigma_{\hat{\varpi}_s}^2 \bigr)\  \mathrm{d}  d_s.
 }
-Since we keep the kernel locations and covariances fixed, those weights can be precalculated via $\nobj$ independent one-dimensional integrals.
+Since we keep the kernel locations and covariances fixed, those weights can be precalculated via $\nobj$ independent dimensional integrals.
 We evaluate them numerically given that the integrand is simple and the integration can be tuned easily. 
 If this operation were prohibitive, or if the kernel parameters were not kept fixed, one could sample the distance $d_s$ (jointly or conditionally on the bin $b_s$).
 Since the kernels and likelihoods admit simple gradients and Hessians, one could use Hamiltonian Monte Carlo \citep[\eg][]{Duane1987, Neal2012} to efficiently sample all $\nobj$ distances simultaneously.
@@ -340,7 +341,7 @@ The first three panels shows the change in the mean, standard deviation, and SNR
 \begin{figure}
 \hspace*{-2mm}\includegraphics[width=15.7cm]{model_dist_pdfs.pdf}
 \caption{Posterior distributions on the distances of a few objects involved in constraining the model shown in \figrefs{fig:colmagdiag_mainsample}{fig:colmagdiag_mainsample_dist}. 
-The improvement in distance SNR is also shown. The objects are also placed on the inferred color--magnitude diagram, to highlight that the shrinkage is most efficient for low-SNR objects and the densest parts of the color diagram. \todo{Need to "randomly" choose better objects.}}\label{fig:model_dist_pdfs}
+The improvement in distance SNR is also shown. The objects are also placed on the inferred color--magnitude diagram, to highlight that the shrinkage is most efficient for low-SNR objects and the densest parts of the color diagram.}\label{fig:model_dist_pdfs}
 \end{figure}
 
 We consider the Gaia data \citep{gaia}, specifically the first data release (DR1) of the Tycho-Gaia astrometric solution \citep[hereafter TGAS,][]{gaia_dr1}.
@@ -377,9 +378,8 @@ For each object we compute the distance posterior distribution via \equref{eq:na
 Our point of comparison is the set of parallax-only distance estimates, \ie not using our hierarchical model but only the parallax information of \equref{eq:parallaxlike}.
 Note that the posterior distributions are not Gaussian, as expected and also shown below. 
 Nevertheless, the mean and standard deviation provides a useful metrics. 
-We measure that on average the distance SNR improves by 26\% and the distance uncertainty decreases by 40\%.
-We find that 12\% of the objects have their distance uncertainty halved after the inclusion of color--magnitude information via our hierarchical model. 
-\todo{update those numbers}.
+We measure that on average the distance SNR improves by 18\% and the distance uncertainty decreases by 37\%.
+We find that 9\% of the objects have their distance uncertainty halved after the inclusion of color--magnitude information via our hierarchical model. 
 This shrinkage of the distance uncertainties is most efficient in the densely populated regions of color--magnitude space.
 \figref{fig:model_dist_pdfs} shows the distance posterior distributions obtained with our method for a few randomly chosen objects, illustrating the uncertainty shrinkage.
 We also place these objects in the color--magnitude diagram (the errors on the absolute magnitude are obtained by resampling).
@@ -402,7 +402,6 @@ Given that those objects have significant amounts of noise, causing the distance
 The hierarchical model significantly decreases this effect, \ie improves the distance estimates both in terms of mean and uncertainty, demonstrating the validity of our inference scheme.
 
 Finally, we perform an additional test of our method on open clusters.
-\todo{Need to add some details here, for reproducibility}
 We retrieve the coordinates, distances, and proper motions, of known open clusters from the WEBDA database\footnote{www.univie.ac.at/webda}.
 From our TGAS-APASS sample, we select cluster member candidates for each cluster in a radius corresponding to 3 pc.
 \figref{fig:cv_metrics} shows the result of applying our framework to those objects for a few selected clusters, \ie using the color--diagram inferred above to inform the distance estimates.
@@ -459,6 +458,8 @@ We intend to explore this avenue in future work.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \acknowledgments
+
+We thank Lauren Anderson, Jo Bovy, Adrian Price-Wheelan, Semyeong Ho, and Keith Hawkins, for stimulating discussions and useful comments on this manuscript.
 
 BL was supported by NASA through the Einstein Postdoctoral Fellowship (award number PF6-170154).
 DWH was partially supported by the NSF (AST-1517237) and the Moore--Sloan Data Science Environment at NYU.
