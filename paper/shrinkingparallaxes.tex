@@ -108,7 +108,7 @@ With modifications by David W. Hogg, Daniel Foreman-Mackey, Boris Leistedt
 
 \begin{abstract}
 We present a hierarchical probabilistic model for improving parallax-based stellar distance estimates using color--magnitude information. 
-This is achieved with a data driven model of the color--magnitude diagram, not relying on stellar models but instead on the relative abundances of stars in color--magnitude cells, which are inferred from noisy magnitudes and parallaxes.
+This is achieved with a data driven model of the color--magnitude diagram, not relying on stellar models but instead on the relative abundances of stars in color--magnitude cells, which are inferred from very noisy magnitudes and parallaxes.
 This is equivalent to deconvolving observational errors and constructing a probabilistic, noiseless color--magnitude diagram.
 While the latter can be useful for a range of applications, we focus on deriving improved stellar distance estimates relying on both parallax and color--magnitude information.
 We demonstrate the efficiency of this approach on the 1.4 million stars of the Gaia TGAS sample which have APASS magnitudes.
@@ -149,10 +149,21 @@ We focus on evaluating the shrinkage of distance estimates obtained by construct
 We make a number of simplifying assumptions to make our demonstration more transparent, such as adopting uninformative distance priors and point estimates of dust corrections. 
 Those assumptions could be relaxed. 
 
+In parallel to this work, \cite{Anderson2017} also presents a reconstruction of the noise-deconvolved color--magnitude diagram from the Gaia data, but using a variant of the eXtreme Deconvolution (XD) algorithm \cite{bovy2011}.
+Five key elements distinguishes the XD inference from the work presented in this paper.
+First, the XD model is based the Gaia magnitude and 2MASS colors, which are more precise than the APASS data we use here.
+Second, in the XD model, the color--magnitude diagram is modeled as a (transformed) Gaussian mixture where the positions and sizes of the components are also inferred.
+Third, in the XD model, the noise model is more approximate (magnitude uncertainties are ignored) to make the method more tractable.
+Fourth, in the XD model dust is a smaller correction (because of the infrared photometry) and it is iteratively optimized to be self-consistent with the final CMD model.
+Fifth, the XD model is a maximum-marginalized likelihood method; it is not fully probabilistic at all levels of the hierarchy in the hierarchical model.
+Those differences allow \cite{Anderson2017} to construct a color--magnitude diagram at higher resolution, at the cost of an approximate methodology scheme.
+The methodology and results presented here fully account for a realistic noise model, but they rely on noisier data and keep the resolution (the positions and widths of the Gaussian mixture component) fixed, resulting in a more reliable inference, but of a less precise color--magnitude diagram.
+Suitably combining the two approaches might be the key to fully exploiting the full-Mission Gaia data with computationally tractable but nonetheless justified hierarchical probabilistic models.
+
 This paper is structured as follows: our model and inference framework are described in \secref{sec:model}, and applied to the Gaia data in \secref{sec:application}. 
 Conclusions and perspectives are presented in \secref{sec:concl}.
 
-\newpage
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Model}\label{sec:model}
 

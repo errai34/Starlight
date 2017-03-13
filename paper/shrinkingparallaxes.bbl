@@ -1,6 +1,9 @@
 \begin{thebibliography}{}
 \expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
 
+\bibitem[{{Anderson} \& {Hogg}(2017)}]{Anderson2017}
+{Anderson}, L., \& {Hogg}, D. 2017, in prep
+
 \bibitem[{{Astraatmadja} \&
   {Bailer-Jones}(2016{\natexlab{a}})}]{Astraatmadja2016}
 {Astraatmadja}, T.~L., \& {Bailer-Jones}, C.~A.~L. 2016{\natexlab{a}}, \apj,
