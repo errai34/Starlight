@@ -493,3 +493,163 @@ class SimpleHRDModel(SimpleHRDModel_nomarg):
 
         print('Time per sample: %g' % t1t, 's , %g' % t2t, 's , %g' % t3t, 's')
         return distances_samples, bins_samples, binamps_samples
+
+
+# Define the v(r, alpha, delta) to v(x, y, z) matrix projection
+# following Bovy, Hogg and Roweis 2009
+def xyz_proj_matrix(alpha, delta):
+    theta = 123 * np.pi/180
+    alpha_NGP = 12.85 * np.pi/180
+    delta_NGP = 27.7 * np.pi/180
+    A1 = np.matrix([
+            [np.cos(alpha), -np.sin(alpha), 0],
+            [np.sin(alpha), np.cos(alpha), 0],
+            [0, 0, 1]
+        ])
+    A2 = np.matrix([
+            [np.cos(delta), 0, -np.sin(delta)],
+            [0, 1, 0],
+            [np.sin(delta), 0, np.cos(delta)]
+        ])
+    T1 = np.matrix([
+            [np.cos(theta), np.sin(theta), 0],
+            [np.sin(theta), -np.cos(theta), 0],
+            [0, 0, 1]
+        ])
+    T2 = np.matrix([
+            [-np.sin(delta_NGP), 0, np.cos(delta_NGP)],
+            [0, 1, 0],
+            [np.cos(delta_NGP), 0, np.sin(delta_NGP)]
+        ])
+    T3 = np.matrix([
+            [np.cos(alpha_NGP), np.sin(alpha_NGP), 0],
+            [-np.sin(alpha_NGP), np.cos(alpha_NGP), 0],
+            [0, 0, 1]
+        ])
+    T = np.dot(T1, np.dot(T2, T3))
+    A = np.dot(A1, A2)
+    R = np.dot(T, A)
+    return R
+
+
+# Invert it and discard v_r component
+# Careful: this matrix must be multiplied by varpi
+# in order to fully convert v(x, y, z) into PM(alpha, delta)
+def xyz2pm(alpha, delta):
+    k = 4.74047
+    R = xyz_proj_matrix(alpha, delta)
+    Rinv = np.linalg.inv(R)
+    Rinv[1, :] /= k * np.cos(delta)
+    Rinv[2, :] /= k
+    return Rinv[1:, :]
+
+
+# Define the v(r, alpha, delta) to v(x, y, z) matrix projection
+# following Bovy, Hogg and Roweis 2009
+# Invert it and discard v_r component
+# Careful: this matrix must be multiplied by varpi
+# in order to fully convert v(x, y, z) into PM(alpha, delta)
+def xyz2pm_multi(alphas, deltas):
+    k = 4.74047
+    theta = 123 * np.pi/180
+    alpha_NGP = 12.85 * np.pi/180
+    delta_NGP = 27.7 * np.pi/180
+    nobj = alphas.size
+    assert alphas.size == deltas.size
+    A1 = np.zeros((nobj, 3, 3))
+    A1[:, 0, 0] = np.cos(alphas)
+    A1[:, 0, 1] = -np.sin(alphas)
+    A1[:, 1, 0] = np.sin(alphas)
+    A1[:, 1, 1] = np.cos(alphas)
+    A1[:, 2, 2] = 1
+    A2 = np.zeros((nobj, 3, 3))
+    A2[:, 0, 0] = np.cos(deltas)
+    A2[:, 0, 2] = -np.sin(deltas)
+    A2[:, 1, 1] = 1
+    A2[:, 2, 0] = np.sin(deltas)
+    A2[:, 2, 2] = np.cos(deltas)
+    T1 = np.matrix([
+            [np.cos(theta), np.sin(theta), 0],
+            [np.sin(theta), -np.cos(theta), 0],
+            [0, 0, 1]
+        ])
+    T2 = np.matrix([
+            [-np.sin(delta_NGP), 0, np.cos(delta_NGP)],
+            [0, 1, 0],
+            [np.cos(delta_NGP), 0, np.sin(delta_NGP)]
+        ])
+    T3 = np.matrix([
+            [np.cos(alpha_NGP), np.sin(alpha_NGP), 0],
+            [-np.sin(alpha_NGP), np.cos(alpha_NGP), 0],
+            [0, 0, 1]
+        ])
+    T = np.dot(T1, np.dot(T2, T3))
+    A = np.einsum('ijk,ikl->ijl', A1, A2)
+    R = np.einsum('ij,kjm->kim', T, A)
+    Rinv = np.linalg.inv(R)
+    Rinv[:, 1, :] /= k * np.cos(deltas)[:, None]
+    Rinv[:, 2, :] /= k
+    return Rinv[:, 1:, :]
+
+
+# Define the new parallax likelihood, exploiting covariance with proper motions
+# This has the true velocity marginalized over, with a gaussian mixture prior
+def parallaxProperMotion_VelocityMarginalized_Likelihood_oneobject(
+        varpigrid,  # varpi grid to compute the likelihood on
+        pm_ra, pm_dec, varpi,  # data (point estimates)
+        mu_varpi_covar,  # data (covariance of the estimates)
+        ra, dec,  # position
+        vxyz_amps, vxyz_mus, vxyz_covars):
+        # Gaussian mixture model (three lists containing arrays)
+
+    n_comp = len(vxyz_amps)
+    xyz2radec = xyz2pm(np.pi/180 * ra,  np.pi/180 * dec)
+    newlikeevals = 0*varpigrid  # likelihood evaluated on varpi grid
+    for b in range(n_comp):  # loop through the components of the miture
+        muprior = np.dot(xyz2radec, vxyz_mus[b])
+        delta = np.zeros((varpigrid.size, 3))  # model - data
+        delta[:, 0] = varpigrid * muprior[0, 0] - pm_ra
+        delta[:, 1] = varpigrid * muprior[0, 1] - pm_dec
+        delta[:, 2] = varpigrid - varpi
+        comp_covar = mu_varpi_covar[None, :, :] *\
+            np.ones((varpigrid.size, 1, 1))
+        comp_covar[:, :2, :2] += varpigrid[:, None, None]**2. *\
+            np.asarray(np.dot(xyz2radec,
+                       np.dot(vxyz_covars[b], xyz2radec.T)))[None, :, :]
+        newlikeevals[:] += vxyz_amps[b] / np.linalg.det(comp_covar)**0.5 \
+            * np.exp(-0.5*np.sum(delta[:, :] *
+                                 np.linalg.solve(comp_covar, delta[:, :]),
+                                 axis=1))
+    return newlikeevals
+
+
+def parallaxProperMotion_VelocityMarginalized_Likelihood(
+        varpigrid,  # varpi grid to compute the likelihood on
+        pms_ra, pms_dec, varpis,  # data (point estimates)
+        mu_varpi_covars,  # data (covariance of the estimates)
+        ras, decs,  # positions
+        vxyz_amps, vxyz_mus, vxyz_covars):
+        # Gaussian mixture model (three lists containing arrays)
+
+    n_comp = len(vxyz_amps)
+    xyz2radec = xyz2pm_multi(np.pi/180 * ras,  np.pi/180 * decs)
+    like_grid = np.zeros((ras.size, varpigrid.size))
+    for b in range(n_comp):  # loop through the components of the miture
+        muprior = np.dot(xyz2radec, vxyz_mus[b])
+        delta = np.zeros((ras.size, varpigrid.size, 3))  # model - data
+        delta[:, :, 0] = varpigrid[None, :] * muprior[:, None, 0]\
+            - pms_ra[:, None]
+        delta[:, :, 1] = varpigrid[None, :] * muprior[:, None, 1]\
+            - pms_dec[:, None]
+        delta[:, :, 2] = varpigrid[None, :] - varpis[:, None]
+        comp_covar = 1*mu_varpi_covars[:, None, :, :]\
+            * np.ones((1, varpigrid.size, 1, 1))
+        comp_covar[:, :, :2, :2] += varpigrid[None, :, None, None]**2. \
+            * np.einsum('ijk, km, ilm->ijl', xyz2radec,
+                        vxyz_covars[b], xyz2radec)[:, None, :, :]
+        like_grid[:, :] += vxyz_amps[b] / np.linalg.det(comp_covar)**0.5 \
+            * np.exp(-0.5*np.sum(delta[:, :, :] *
+                                 np.linalg.solve(comp_covar, delta[:, :, :]),
+                                 axis=2))
+
+    return like_grid

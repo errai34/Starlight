@@ -145,3 +145,35 @@ def test_SimpleHDRModel_gradients():
 
         bins_samples, binamps_samples =\
             model.gibbs_sampler(2, num_steps=10)
+
+
+def test_ParallaxProperMotion_Likelihood():
+
+    varpigrid = np.linspace(0, 10, 10)
+    n_comp = 3
+    nobj = 10
+    pms_ra = np.random.uniform(0, 1, nobj)
+    pms_dec = np.random.uniform(0, 1, nobj)
+    varpis = np.random.uniform(0, 1, nobj)
+    ras = np.random.uniform(0, 1, nobj)
+    decs = np.random.uniform(0, 1, nobj)
+    mu_varpi_covars = np.array([np.eye(3) for i in range(nobj)])\
+        .reshape((nobj, 3, 3))
+    vxyz_amps = [np.random.uniform(0, 1, 1) for i in range(n_comp)]
+    vxyz_mus = [np.random.uniform(0, 1, 3) for i in range(n_comp)]
+    vxyz_covars = [np.eye(3) for i in range(n_comp)]
+
+    evals1 = parallaxProperMotion_VelocityMarginalized_Likelihood(
+            varpigrid, pms_ra, pms_dec, varpis,
+            mu_varpi_covars, ras, decs, vxyz_amps, vxyz_mus, vxyz_covars)
+
+    evals2 = 0*evals1
+    for i in range(nobj):
+        evals2[i, :] = \
+            parallaxProperMotion_VelocityMarginalized_Likelihood_oneobject(
+                varpigrid, pms_ra[i], pms_dec[i], varpis[i],
+                mu_varpi_covars[i, :, :], ras[i], decs[i],
+                vxyz_amps, vxyz_mus, vxyz_covars)
+
+    np.testing.assert_allclose(evals1, evals2,
+                               rtol=relative_accuracy)
