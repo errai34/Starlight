@@ -653,3 +653,51 @@ def parallaxProperMotion_VelocityMarginalized_Likelihood(
                                  axis=2))
 
     return like_grid
+
+
+# Define the v(r, alpha, delta) to v(x, y, z) matrix projection
+# following Bovy, Hogg and Roweis 2009
+# Invert it and discard v_r component
+# Careful: this matrix must be multiplied by varpi
+# in order to fully convert v(x, y, z) into PM(alpha, delta)
+def xyz2pm_multi(alphas, deltas):
+    k = 4.74047
+    theta = 123 * np.pi/180
+    alpha_NGP = 12.85 * np.pi/180
+    delta_NGP = 27.7 * np.pi/180
+    nobj = alphas.size
+    assert alphas.size == deltas.size
+    A1 = np.zeros((nobj, 3, 3))
+    A1[:, 0, 0] = np.cos(alphas)
+    A1[:, 0, 1] = -np.sin(alphas)
+    A1[:, 1, 0] = np.sin(alphas)
+    A1[:, 1, 1] = np.cos(alphas)
+    A1[:, 2, 2] = 1
+    A2 = np.zeros((nobj, 3, 3))
+    A2[:, 0, 0] = np.cos(deltas)
+    A2[:, 0, 2] = -np.sin(deltas)
+    A2[:, 1, 1] = 1
+    A2[:, 2, 0] = np.sin(deltas)
+    A2[:, 2, 2] = np.cos(deltas)
+    T1 = np.matrix([
+            [np.cos(theta), np.sin(theta), 0],
+            [np.sin(theta), -np.cos(theta), 0],
+            [0, 0, 1]
+        ])
+    T2 = np.matrix([
+            [-np.sin(delta_NGP), 0, np.cos(delta_NGP)],
+            [0, 1, 0],
+            [np.cos(delta_NGP), 0, np.sin(delta_NGP)]
+        ])
+    T3 = np.matrix([
+            [np.cos(alpha_NGP), np.sin(alpha_NGP), 0],
+            [-np.sin(alpha_NGP), np.cos(alpha_NGP), 0],
+            [0, 0, 1]
+        ])
+    T = np.dot(T1, np.dot(T2, T3))
+    A = np.einsum('ijk,ikl->ijl', A1, A2)
+    R = np.einsum('ij,kjm->kim', T, A)
+    Rinv = np.linalg.inv(R)
+    Rinv[:, 1, :] /= k * np.cos(deltas)[:, None]
+    Rinv[:, 2, :] /= k
+    return Rinv[:, 1:, :]
