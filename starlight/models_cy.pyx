@@ -6,6 +6,7 @@ from cpython cimport bool
 cimport cython
 from libc.math cimport sqrt, M_PI, exp, pow, erf, log, log10
 from libc.stdlib cimport abort, malloc, free
+cimport scipy.linalg.cython_lapack as cython_lapack
 
 cdef extern from "gsl/gsl_rng.h":
     ctypedef struct gsl_rng_type:
@@ -613,3 +614,383 @@ def sample_bins_from_grid(
             if x < cumpdf[b] and x >= cumpdf[b-1]:
                 bins[o] = b - 1
         free(cumpdf)
+
+
+cdef double logsumexp(double* arr, long dim) nogil:
+    cdef int i
+    cdef double result = 0.0
+    cdef double largest_in_a = arr[0]
+    for i in range(1, dim):
+        if (arr[i] > largest_in_a):
+            largest_in_a = arr[i]
+    for i in range(dim):
+        result += exp(arr[i] - largest_in_a)
+    return largest_in_a + log(result)
+
+
+cdef double univariate_normal_lnprob(double x, double mu, double var) nogil:
+    return - 0.5 * pow(x - mu, 2)/ var - 0.5 * log(2*M_PI) - 0.5 * log(var)
+
+cdef double bivariate_normal_lnprob(double x1, double x2, 
+                                    double mu1, double mu2, 
+                                    double var1, double var2, double rho) nogil:
+    cdef double z = pow(x1 - mu1, 2) / var1 + pow(x2 - mu2, 2) / var2\
+        - 2 * rho * (x1 - mu1) * (x2 - mu2) / pow(var1 * var2, 0.5)
+    return - 0.5 * z / (1 - rho*rho) - log(2*M_PI)\
+         - 0.5 * log(var1 * var2 * (1 - rho*rho)) 
+
+    
+cdef create_covariances(
+    double[:, :, :] bincovars, # nbins, (ncols + 1), (ncols + 1)
+    double[:, :] binrhos, # nbins, (ncols - 1)*ncols//2
+    double[:, :] binsigs, # nbins, (ncols + 1)
+    long nbins, long ncols
+                       ):
+    cdef long b, i, j
+    for b in range(nbins):
+        for i in range(ncols+1):
+            for j in range(i):
+                bincovars[b, i*(i+1) / 2 + j] = binrhos[b, i*(i-1)//2 + j] * binsigs[b, i] * binsigs[b, j]
+            bincovars[b, i*(i+1) / 2 + i] = binsigs[b, i] * binsigs[b, i]
+
+
+def lnprob_dustdistbinmarg(
+    long nobj, long nbins, long nmarggrid, double sigma,
+    double[:] obsvarpis,  # nobj
+    double[:] obsvarpis_var,  # nobj
+    double[:] obsmags,  # nobj
+    double[:] obsmags_var,  # nobj
+    double[:] obscolors,  # nobj, ncols
+    double[:] obscolors_var,  # nobj, ncols
+    double[:] dustpriormeans,  # nobj
+    double[:] dustpriorvars,  # nobj
+    double[:] dustcoefs,  # ncols + 1
+    double[:] binamps,  # nbins
+    double[:, :] binmus,  # nbins, ncols + 1
+    double[:, :] binvars,  # nbins, ncols
+    double[:, :] binrhos  # nbins, (ncols - 1) * (ncols) // 2
+     ):
+
+    cdef double lnprobtot = 0
+    cdef double* probgrid
+    cdef long b, i, j, o, kv, kd
+    cdef double deltavarpi, deltadust, varpi, dustamp, varpi_min, varpi_max
+    
+    for o in prange(nobj, nogil=True):
+        
+        probgrid = <double * > malloc(sizeof(double) * (nbins * nmarggrid * nmarggrid))
+        
+        for b in range(nbins):
+            varpi_min = max(1e-4, obsvarpis[o] - sigma * pow(obsvarpis_var[o], 0.5))
+            varpi_max = obsvarpis[o] + sigma * pow(obsvarpis_var[o], 0.5)
+            deltavarpi =  (varpi_max - varpi_min) / nmarggrid
+            deltadust = 2 * sigma * pow(dustpriorvars[o], 0.5) / nmarggrid
+            
+            for kv in range(nmarggrid):
+                varpi = varpi_min + kv * deltavarpi
+                for kd in range(nmarggrid):
+                    dustamp = dustpriormeans[o] - sigma * pow(dustpriorvars[o], 0.5) + kd * deltadust
+                    probgrid[b*nmarggrid*nmarggrid + kv*nmarggrid + kd] = \
+                        log(deltadust * deltavarpi * binamps[b])\
+                        + univariate_normal_lnprob(obsvarpis[o], varpi, obsvarpis_var[o])\
+                        + univariate_normal_lnprob(dustamp, dustpriormeans[o], dustpriorvars[o])\
+                        + bivariate_normal_lnprob(
+                              binmus[b, 0], 
+                              binmus[b, 1],
+                              obsmags[o] - dustamp * dustcoefs[0] + 5*log10(varpi) - 10,
+                              obscolors[o] - dustamp * dustcoefs[1], 
+                              obsmags_var[o] + binvars[b, 0],
+                              obscolors_var[o] + binvars[b, 1],
+                              binrhos[b, 0]
+                        )
+
+        lnprobtot += logsumexp(probgrid, nbins*nmarggrid*nmarggrid)
+
+        free(probgrid)
+
+    return lnprobtot
+
+
+def lnprob_distbinmarg(
+    long nobj, long nbins, long nmarggrid, double sigma,
+    double[:] obsvarpis,  # nobj
+    double[:] obsvarpis_var,  # nobj
+    double[:] obsmags,  # nobj
+    double[:] obsmags_var,  # nobj
+    double[:] obscolors,  # nobj, ncols
+    double[:] obscolors_var,  # nobj, ncols
+    double[:] dustamps,  # nobj
+    double[:] dustcoefs,  # ncols + 1
+    double[:] binamps,  # nbins
+    double[:, :] binmus,  # nbins, ncols + 1
+    double[:, :] binvars,  # nbins, ncols
+    double[:, :] binrhos  # nbins, (ncols - 1) * (ncols) // 2
+     ):
+
+    cdef double lnprobtot = 0
+    cdef double* probgrid
+    cdef long b, i, j, o, kv
+    cdef double deltavarpi, varpi, varpi_min, varpi_max
+    
+    for o in prange(nobj, nogil=True):#range(nobj):#
+        
+        probgrid = <double * > malloc(sizeof(double) * (nbins * nmarggrid))
+
+        varpi_min = max(1e-4, obsvarpis[o] - sigma * pow(obsvarpis_var[o], 0.5))
+        varpi_max = obsvarpis[o] + sigma * pow(obsvarpis_var[o], 0.5)
+        deltavarpi =  (varpi_max - varpi_min) / nmarggrid
+        
+        for b in range(nbins):
+            
+            for kv in range(nmarggrid):
+                varpi = varpi_min + kv * deltavarpi
+                probgrid[b*nmarggrid + kv] = \
+                    log(deltavarpi * binamps[b])\
+                    + univariate_normal_lnprob(obsvarpis[o], varpi, obsvarpis_var[o])\
+                    + bivariate_normal_lnprob(
+                          binmus[b, 0], 
+                          binmus[b, 1],
+                          obsmags[o] - dustamps[o] * dustcoefs[0] + 5*log10(varpi) - 10,
+                          obscolors[o] - dustamps[o] * dustcoefs[1], 
+                          obsmags_var[o] + binvars[b, 0],
+                          obscolors_var[o] + binvars[b, 1],
+                          binrhos[b, 0]
+                    )
+
+        lnprobtot += logsumexp(probgrid, nbins*nmarggrid)
+
+        free(probgrid)
+
+    return lnprobtot
+
+
+cdef double matrix3x3_determinant(double* a) nogil:
+    return (a[0*3+0] * (a[1*3+1] * a[2*3+2] - a[2*3+1] * a[1*3+2])\
+           -a[1*3+0] * (a[0*3+1] * a[2*3+2] - a[2*3+1] * a[0*3+2])\
+           +a[2*3+0] * (a[0*3+1] * a[1*3+2] - a[1*3+1] * a[0*3+2]))
+
+
+cdef double matrix3x3_quadform(
+        double x1, double x2, double x3, 
+        double* a, double det) nogil:
+    cdef double b11, b12, b13, b22, b23, b33
+    b11 = a[1*3+1] * a[2*3+2] - a[1*3+2] * a[2*3+1]
+    b12 = a[0*3+2] * a[2*3+1] - a[0*3+1] * a[2*3+2]
+    b13 = a[0*3+1] * a[1*3+2] - a[0*3+2] * a[1*3+1]
+    b22 = a[0*3+0] * a[2*3+2] - a[0*3+2] * a[2*3+0]
+    b23 = a[0*3+2] * a[1*3+0] - a[0*3+0] * a[1*3+2]
+    b33 = a[0*3+0] * a[1*3+1] - a[0*3+1] * a[1*3+0]
+    return (b11*x1*x1 + 2*b12*x1*x2 + 2*b13*x1*x3 +\
+             b22*x2*x2 + 2*b23*x2*x3 + b33*x3*x3) / det
+
+
+def varpipm_likelihood_velocitybinmarg(
+        double[:, :] probgrid,
+        long nbins, 
+        long nobj,
+        double varpi_min, 
+        double varpi_max,
+        long nmarggrid,
+        double[:] obsvarpis,  # data (point estimates)
+        double[:, :, :] xyz2radec, 
+        double[:, :, :] mu_varpi_covars,  # data (covariance of the estimates)
+        double[:] pm_ras, 
+        double[:] pm_decs,
+        double[:] vxyz_amps, 
+        double[:, :] vxyz_mus, 
+        double[:, :, :] vxyz_covars
+        ):
+
+    cdef double lnprobtot = 0
+    #cdef double* probgrid
+    cdef long b, i, j, o, kv, k1, k2
+    cdef double deltavarpi, varpi, delta1, delta2, delta3, det #varpi_min, varpi_max, 
+    
+    for o in prange(nobj, nogil=True):#range(nobj):#
+
+        comp_covar = <double * > malloc(sizeof(double) * (3 * 3))
+        
+        for b in range(nbins):
+            deltavarpi =  (varpi_max - varpi_min) / (nmarggrid - 1)
+
+            for kv in range(nmarggrid):
+                varpi = varpi_min + kv * deltavarpi
+
+                delta1 = - pm_ras[o]
+                delta2 = - pm_decs[o]
+                delta3 = varpi - obsvarpis[o]
+                for k1 in range(3):
+                    delta1 = delta1 + varpi * xyz2radec[o, 0, k1] * vxyz_mus[b, k1] 
+                    delta2 = delta2 + varpi * xyz2radec[o, 1, k1] * vxyz_mus[b, k1]
+                
+                for i in range(3):
+                    for j in range(3):
+                            comp_covar[i*3 + j] = mu_varpi_covars[o, i, j]
+
+                for i in range(2):
+                    for j in range(2):
+                        for k1 in range(3):
+                            for k2 in range(3):
+                                 comp_covar[i*3 + j] += varpi**2. * \
+                                    xyz2radec[o, i, k1] * vxyz_covars[b, k1, k2] *\
+                                         xyz2radec[o, j, k2]
+
+                det = matrix3x3_determinant(comp_covar)
+               
+                probgrid[o, kv] += vxyz_amps[b] * exp(\
+                    - 0.5 * log(det) - 0.5 * matrix3x3_quadform(delta1, delta2, delta3, comp_covar, det))
+
+        free(comp_covar)
+
+    return lnprobtot
+
+
+
+
+
+def varpipm_likelihood_velocityvarpibinmarg(
+        long nbins, 
+        long nobj,
+        long nmarggrid,
+        double sigma,
+        double[:] obsvarpis, 
+        double[:] obsvarpis_err, 
+        double[:, :, :] xyz2radec, 
+        double[:, :, :] mu_varpi_covars, 
+        double[:] pm_ras, 
+        double[:] pm_decs,
+        double[:] vxyz_amps, 
+        double[:, :] vxyz_mus, 
+        double[:, :, :] vxyz_covars
+        ):
+
+    cdef double lnprobtot = 0
+    #cdef double* probgrid
+    cdef long b, i, j, o, kv, k1, k2
+    cdef double deltavarpi, varpi, delta1, delta2, delta3, det #varpi_min, varpi_max, 
+    
+    for o in range(nobj):#prange(nobj, nogil=True):#range(nobj):#
+
+        probgrid = <double * > malloc(sizeof(double) * (nbins * nmarggrid))
+        comp_covar = <double * > malloc(sizeof(double) * (3 * 3))
+        
+        for b in range(nbins):
+            varpi_min = max(1e-4, obsvarpis[o] - sigma * obsvarpis_err[o])
+            varpi_max = obsvarpis[o] + sigma * obsvarpis_err[o]
+            deltavarpi =  (varpi_max - varpi_min) / (nmarggrid - 1)
+
+            for kv in range(nmarggrid):
+                varpi = varpi_min + kv * deltavarpi
+
+                delta1 = - pm_ras[o]
+                delta2 = - pm_decs[o]
+                delta3 = varpi - obsvarpis[o]
+                for k1 in range(3):
+                    delta1 = delta1 + varpi * xyz2radec[o, 0, k1] * vxyz_mus[b, k1] 
+                    delta2 = delta2 + varpi * xyz2radec[o, 1, k1] * vxyz_mus[b, k1]
+                
+                for i in range(3):
+                    for j in range(3):
+                            comp_covar[i*3 + j] = mu_varpi_covars[o, i, j]
+
+                for i in range(2):
+                    for j in range(2):
+                        for k1 in range(3):
+                            for k2 in range(3):
+                                 comp_covar[i*3 + j] += varpi**2. * \
+                                    xyz2radec[o, i, k1] * vxyz_covars[b, k1, k2] *\
+                                         xyz2radec[o, j, k2]
+
+                det = matrix3x3_determinant(comp_covar)
+
+                probgrid[b*nmarggrid + kv] = \
+                    log(deltavarpi * vxyz_amps[b])\
+                    - 0.5 * log(det) - 0.5 * matrix3x3_quadform(delta1, delta2, delta3, comp_covar, det)
+
+        lnprobtot += logsumexp(probgrid, nbins*nmarggrid)
+
+        free(probgrid)
+        free(comp_covar)
+
+
+    return lnprobtot
+
+
+cdef double multivariate_normal_chi2(int ndim, double * mean, double * covar_chol) nogil:
+    cdef int i, rhs = 1, info
+    temp = <double * > malloc(sizeof(double) * (ndim))
+    for i in range(ndim):
+        temp[i] = mean[i]
+    cython_lapack.dpotrs( 'U', &ndim, &rhs, covar_chol, &ndim, temp, &ndim, &info)
+    chi2 = 0.0
+    for i in range(ndim):
+        chi2 += temp[i] * mean[i]
+    free(temp)
+    return chi2
+
+
+def lnprob_multicolor_distbinmarg(
+    long nobj, long ncols, long nbins, long nmarggrid, double sigma,
+    double[:] obsvarpis,  # nobj
+    double[:] obsvarpis_var,  # nobj
+    double[:] obsmags,  # nobj
+    double[:] obsmags_var,  # nobj
+    double[:, :] obscolors,  # nobj, ncols
+    double[:, :] obscolors_var,  # nobj, ncols
+    double[:] dustamps,  # nobj
+    double[:] dustcoefs,  # ncols + 1
+    double[:] binamps,  # nbins
+    double[:, :] binmus,  # nbins, ncols + 1
+    double[:, :, :] bincovars  # nbins, (ncols + 1)*(ncols + 1)
+     ):
+
+    cdef double lnprobtot = 0
+    cdef double* probgrid
+    cdef long b, i, j, o, kv
+    cdef double deltavarpi, varpi, varpi_min, varpi_max, det
+    cdef int ndim = ncols + 1, info
+    
+    for o in prange(nobj, nogil=True):#range(nobj):#
+        
+        probgrid = <double * > malloc(sizeof(double) * (nbins * nmarggrid))
+        meanvec = <double * > malloc(sizeof(double) * (ncols+1))
+        covar = <double * > malloc(sizeof(double) * ((ncols+1) * (ncols+1)))
+
+        varpi_min = max(1e-4, obsvarpis[o] - sigma * pow(obsvarpis_var[o], 0.5))
+        varpi_max = obsvarpis[o] + sigma * pow(obsvarpis_var[o], 0.5)
+        deltavarpi =  (varpi_max - varpi_min) / nmarggrid
+        
+        for b in range(nbins):
+            
+            for i in range(ncols+1):
+                for j in range(ncols+1):
+                    covar[i*(ncols+1) + j] = bincovars[b, i, j]
+
+            covar[0] = covar[0] + obsmags_var[o]
+            for i in range(ncols):
+                meanvec[1+i] = obscolors[o, i] - dustamps[o] * dustcoefs[1+i] - binmus[b, i+1]
+                covar[(1+i)*(ncols+1) + (1+i)] = covar[(1+i)*(ncols+1) + (1+i)] + obscolors_var[o, i]
+
+            cython_lapack.dpotrf('U', &ndim, covar, &ndim, &info)
+
+            det = 1.0
+            for i in range(ncols+1):
+                det = det * pow(covar[i*(ncols+1)+i], 2.)
+
+            for kv in range(nmarggrid):
+                varpi = varpi_min + kv * deltavarpi
+                meanvec[0] = obsmags[o] - dustamps[o] * dustcoefs[0] + 5*log10(varpi) - 10 - binmus[b, 0]
+                probgrid[b*nmarggrid + kv] = \
+                    log(deltavarpi * binamps[b])\
+                    + univariate_normal_lnprob(obsvarpis[o], varpi, obsvarpis_var[o])\
+                    - 0.5 * multivariate_normal_chi2(ndim, meanvec, covar) - 0.5 * log(det) - 0.5 * ndim * log(2*M_PI) 
+
+        lnprobtot += logsumexp(probgrid, nbins*nmarggrid)
+
+        free(probgrid)
+        free(meanvec)
+        free(covar)
+
+    return lnprobtot
+
+
