@@ -34,7 +34,5 @@ script:
   - coverage run --source starlight -m py.test
   - pep8 starlight/*py
   - pep8 tests/*py
-  - cd paper
-  - make
 after_success:
   coveralls
