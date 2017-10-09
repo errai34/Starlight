@@ -674,7 +674,7 @@ def lnprob_dustdistbinmarg(
     cdef double lnprobtot = 0
     cdef double* probgrid
     cdef long b, i, j, o, kv, kd
-    cdef double deltavarpi, deltadust, varpi, dustamp, varpi_min, varpi_max
+    cdef double deltavarpi, deltadust, varpi, dustamp, varpi_min, varpi_max, binrho
     
     for o in prange(nobj, nogil=True):
         
@@ -685,7 +685,7 @@ def lnprob_dustdistbinmarg(
             varpi_max = obsvarpis[o] + sigma * pow(obsvarpis_var[o], 0.5)
             deltavarpi =  (varpi_max - varpi_min) / nmarggrid
             deltadust = 2 * sigma * pow(dustpriorvars[o], 0.5) / nmarggrid
-            
+            binrho = binrhos[b, 0] * sqrt(binvars[b, 0] * binvars[b, 1]) / sqrt((obsmags_var[o] + binvars[b, 0])*(obscolors_var[o] + binvars[b, 1]))
             for kv in range(nmarggrid):
                 varpi = varpi_min + kv * deltavarpi
                 for kd in range(nmarggrid):
@@ -701,7 +701,7 @@ def lnprob_dustdistbinmarg(
                               obscolors[o] - dustamp * dustcoefs[1], 
                               obsmags_var[o] + binvars[b, 0],
                               obscolors_var[o] + binvars[b, 1],
-                              binrhos[b, 0]
+                              binrho
                         )
 
         lnprobtot += logsumexp(probgrid, nbins*nmarggrid*nmarggrid)
@@ -875,7 +875,7 @@ cdef double multivariate_normal_chi2(int ndim, double * mean, double * covar_cho
     free(temp)
     return chi2
 
-from scipy.stats import multivariate_normal
+
 def lnprob_multicolor_distbinmarg(
     long nobj, long ncols, long nbins, long nmarggrid, double sigma,
     double[:] obsvarpis,  # nobj
@@ -940,40 +940,54 @@ def lnprob_multicolor_distbinmarg(
 
     return lnprobtot
 
-
+         
 def lnprob_distbinmarg(
-    long nobj, long nbins, long nmarggrid, double sigma,
-    double[:] obsvarpis,  # nobj
-    double[:] obsvarpis_var,  # nobj
-    double[:] obsmags,  # nobj
-    double[:] obsmags_var,  # nobj
-    double[:] obscolors,  # nobj, ncols
-    double[:] obscolors_var,  # nobj, ncols
-    double[:] dustamps,  # nobj
-    double[:] dustcoefs,  # ncols + 1
-    double[:] binamps,  # nbins
-    double[:, :] binmus,  # nbins, ncols + 1
-    double[:, :] binvars,  # nbins, ncols
-    double[:, :] binrhos  # nbins, (ncols - 1) * (ncols) // 2
+    long nobj, # number of objects 
+    long nbins, # number of bins of the Gaussian mixture 
+    long nmarggrid, # number of points for the numerical marginalization of the parallax.
+    double sigma, # for each object, the marginalization grid will be nmarggrid points between [obsvarpis - sigma*obsvarpis_var**0.5, obsvarpis + sigma*obsvarpis_var**0.5]
+    double[:] obsvarpis,  # Observed parallaxes. Array of size nobj 
+    double[:] obsvarpis_var,  # Parallax Variances. Array of size nobj
+    double[:] obsmags,  # Observed magnitudes. Array of size nobj
+    double[:] obsmags_var,  # Variance of obs magnitudes. Array of size nobj
+    double[:] obscolors,  # Observed color. Array of size nobj
+    double[:] obscolors_var,  # Variance of colors. Array of size  nobj
+    double[:] dustamps,  # Amplitudes of the dust for each object. Array of size nobj 
+    double[:] dustcoefs,  # Dust coefficients for the magnitude and the color. Array of size 2
+    double[:] binamps,  # Normalized amplitudes of the Gaussian mixture components. Array of size nbins
+    double[:, :] binmus,  # Positions of the Gaussian mixture components. Array of size nbins x 2
+    double[:, :] binvars,  # Variances of the Gaussian mixture components. Array of size nbins x 2
+    double[:, :] binrhos  # Correlation coefficients of the Gaussian mixture components. Array of size nbins x 1
      ):
 
-    cdef double lnprobtot = 0
-    cdef double* probgrid
+    cdef double lnprobtot = 0 # total log posterior probability
+    cdef double* probgrid # nbins * nmarggrid grid instanciated for each object, to compute the posterior probability and marginalize over the bins and parallaxes.
     cdef long b, i, j, o, kv
-    cdef double deltavarpi, varpi, varpi_min, varpi_max
+    cdef double deltavarpi, varpi, varpi_min, varpi_max, binrho
+    # deltavarpi is the separation of varpis on the grid of each object.
+    # varpi is a temp variable for the running parallax
+    # varpi_min, varpi_max will be the bounds of the grid for each object
+    # binrho is the correlation coefficient for the bth bin and the oth object, once true color and mag are marginalized over.
     
-    for o in prange(nobj, nogil=True):#range(nobj):#
+    # parallel loop over o
+    for o in prange(nobj, nogil=True):
         
+        # create the grid
         probgrid = <double * > malloc(sizeof(double) * (nbins * nmarggrid))
 
+        # compute the bounds and resolution of the grid for the object.
         varpi_min = max(1e-4, obsvarpis[o] - sigma * pow(obsvarpis_var[o], 0.5))
         varpi_max = obsvarpis[o] + sigma * pow(obsvarpis_var[o], 0.5)
-        deltavarpi =  (varpi_max - varpi_min) / nmarggrid
+        deltavarpi =  (varpi_max - varpi_min) / (nmarggrid - 1)
         
+        # loop over bins
         for b in range(nbins):
-            
+        	# compute the corr coefficient once the mixture and observed errors are added to marginalize over mag and color.
+            binrho = binrhos[b, 0] * sqrt(binvars[b, 0] * binvars[b, 1]) / sqrt((obsmags_var[o] + binvars[b, 0])*(obscolors_var[o] + binvars[b, 1]))
+            # loop over parallax grid.
             for kv in range(nmarggrid):
-                varpi = varpi_min + kv * deltavarpi
+                varpi = varpi_min + kv * deltavarpi # the actual parallax we are considering
+                # compute and store the log posterior distribution for that object, bin, and parallax value.
                 probgrid[b*nmarggrid + kv] = \
                     log(deltavarpi * binamps[b])\
                     + univariate_normal_lnprob(obsvarpis[o], varpi, obsvarpis_var[o])\
@@ -984,13 +998,13 @@ def lnprob_distbinmarg(
                           obscolors[o] - dustamps[o] * dustcoefs[1], 
                           obsmags_var[o] + binvars[b, 0],
                           obscolors_var[o] + binvars[b, 1],
-                          binrhos[b, 0]
+                          binrho
                     )
 
+        # perform the log sum exp of the grid, to get the log posterior value for this object with bin and parallax marginalized over. Then sum them all.
         lnprobtot += logsumexp(probgrid, nbins*nmarggrid)
 
+        # free the grid
         free(probgrid)
 
     return lnprobtot
-
-
